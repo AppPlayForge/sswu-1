@@ -235,7 +235,7 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("版本號: v1.1.0", fontSize = 14.sp, color = Color.Gray)
+                    Text("版本號: v1.1.1", fontSize = 14.sp, color = Color.Gray)
                     TextButton(onClick = onDismiss) {
                         Text(
                             "返回",
