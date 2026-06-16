@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -57,7 +59,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.myTools.KeepScreenOn
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -68,9 +69,8 @@ enum class RulerUnit {
 
 
 @Composable
-fun CaliperScreen() {
-    // 加入這一行，測量時屏幕不會滅
-    KeepScreenOn()
+fun CaliperScreen(onBack: () -> Unit) {
+    // 移除 KeepScreenOn()，防止忘記關閉導致耗電
 
     val context = LocalContext.current
     val configuration = LocalConfiguration.current
@@ -88,7 +88,6 @@ fun CaliperScreen() {
             .background(rulerBlue)
     ) {
         // 1. 尺規畫布
-        // 這裡不再被遮擋，保持全亮
         CaliperRulerCanvas(
             modifier = Modifier.fillMaxSize(),
             unit = currentUnit,
@@ -96,12 +95,28 @@ fun CaliperScreen() {
             orientationKey = isLandscape
         )
 
-        // 2. 底部控制區 (一般模式)
+        // 2. 返回按鈕
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(12.dp)
+                .size(44.dp)
+                .background(Color.Black.copy(alpha = 0.2f), RoundedCornerShape(50))
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "返回",
+                tint = Color.White
+            )
+        }
+
+        // 3. 底部控制區 (一般模式)
         if (!isCalibrating) {
             Column(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 32.dp),
+                    .padding(bottom = 60.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -269,15 +284,15 @@ fun CaliperRulerCanvas(
     val pixelsPerMm = adjustedXdpi / 25.4f
     val snapStepPixels = if (unit == RulerUnit.CM) pixelsPerMm else adjustedXdpi / 16f
 
-    var line1Pos by remember(orientationKey) { mutableFloatStateOf(100f) }
-    var line2Pos by remember(orientationKey) { mutableFloatStateOf(500f) }
-    var rawLine1Pos by remember(orientationKey) { mutableFloatStateOf(100f) }
-    var rawLine2Pos by remember(orientationKey) { mutableFloatStateOf(500f) }
-    var draggingLine by remember { mutableIntStateOf(0) }
+    var line1Pos by remember(orientationKey) { mutableFloatStateOf(-1f) }
+    var line2Pos by remember(orientationKey) { mutableFloatStateOf(-1f) }
+    var rawLine1Pos by remember(orientationKey) { mutableFloatStateOf(-1f) }
+    var rawLine2Pos by remember(orientationKey) { mutableFloatStateOf(-1f) }
+    var draggingLine by remember(orientationKey) { mutableIntStateOf(0) }
     val touchThreshold = with(density) { 40.dp.toPx() }
 
     Canvas(
-        modifier = modifier.pointerInput(Unit) {
+        modifier = modifier.pointerInput(orientationKey) {
             detectDragGestures(
                 onDragStart = { offset ->
                     val dist1 = abs(offset.x - line1Pos)
@@ -322,14 +337,14 @@ fun CaliperRulerCanvas(
         val width = size.width
         val height = size.height
 
-        if (line1Pos == 100f && line2Pos == 500f && width > 0) {
+        if (line1Pos < 0f && width > 0) {
             line1Pos = (width * 0.2f / snapStepPixels).roundToInt() * snapStepPixels
             line2Pos = (width * 0.8f / snapStepPixels).roundToInt() * snapStepPixels
             rawLine1Pos = line1Pos
             rawLine2Pos = line2Pos
         }
 
-        // 1. 刻度繪製 (現在校準時不會變暗了)
+        // 1. 刻度繪製 (上下雙向刻度)
         val unitPixels = if (unit == RulerUnit.CM) pixelsPerMm else (adjustedXdpi / 16f)
         val totalSteps = (width / unitPixels).toInt()
         val tickColor = Color.White
@@ -339,16 +354,44 @@ fun CaliperRulerCanvas(
             val x = i * unitPixels
             val isMajor = if (unit == RulerUnit.CM) i % 10 == 0 else i % 16 == 0
             val isMid = if (unit == RulerUnit.CM) i % 5 == 0 else i % 8 == 0
-            val lineHeight = when {
-                isMajor -> height * 0.22f
-                isMid -> height * 0.15f
-                else -> height * 0.08f
+            val tickHeight = when {
+                isMajor -> height * 0.18f // 稍微縮小刻度比例，給中間留更多空間
+                isMid -> height * 0.12f
+                else -> height * 0.06f
             }
-            drawLine(tickColor, Offset(x, 0f), Offset(x, lineHeight), strokeWidth = if(isMajor) strokeWidth * 1.5f else strokeWidth)
+
+            // 上方刻度
+            drawLine(
+                tickColor,
+                Offset(x, 0f),
+                Offset(x, tickHeight),
+                strokeWidth = if (isMajor) strokeWidth * 1.5f else strokeWidth
+            )
+            // 下方刻度
+            drawLine(
+                tickColor,
+                Offset(x, height),
+                Offset(x, height - tickHeight),
+                strokeWidth = if (isMajor) strokeWidth * 1.5f else strokeWidth
+            )
+
             if (isMajor) {
                 val value = if (unit == RulerUnit.CM) i / 10 else i / 16
-                val textResult = textMeasurer.measure(value.toString(), TextStyle(color = Color.White, fontSize = 16.sp))
-                drawText(textResult, topLeft = Offset(x - textResult.size.width / 2, lineHeight + 10f))
+                val textResult = textMeasurer.measure(
+                    value.toString(),
+                    TextStyle(color = Color.White, fontSize = 14.sp)
+                )
+
+                // 上方文字
+                drawText(
+                    textResult,
+                    topLeft = Offset(x - textResult.size.width / 2, tickHeight + 5f)
+                )
+                // 下方文字
+                drawText(
+                    textResult,
+                    topLeft = Offset(x - textResult.size.width / 2, height - tickHeight - textResult.size.height - 5f)
+                )
             }
         }
 
@@ -384,7 +427,6 @@ fun CaliperRulerCanvas(
     }
 }
 
-// UnitSelector 元件保持不變
 @Composable
 fun UnitSelector(currentUnit: RulerUnit, onUnitSelected: (RulerUnit) -> Unit, modifier: Modifier = Modifier) {
     Row(modifier = modifier.background(Color.Black.copy(alpha = 0.3f), RoundedCornerShape(50)).padding(4.dp)) {

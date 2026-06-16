@@ -111,7 +111,7 @@ fun AddBirthdayDialog(
                 }
                 Spacer(modifier = Modifier.height(20.dp))
                 Text("提醒時間 (可多選)：", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                val timeOptions = listOf(9 to "上午9點", 14 to "下午2點", 19 to "晚上7點")
+                val timeOptions = remember { listOf(9 to "上午9點", 14 to "下午2點", 19 to "晚上7點") }
                 Row(modifier = Modifier.fillMaxWidth()) {
                     timeOptions.forEach { (hour, label) ->
                         Row(
@@ -136,7 +136,7 @@ fun AddBirthdayDialog(
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("提醒日期 (可多選)：", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                val dayOptions = listOf(0 to "當天", 1 to "1天前", 3 to "3天前", 7 to "7天前")
+                val dayOptions = remember { listOf(0 to "當天", 1 to "1天前", 3 to "3天前", 7 to "7天前") }
                 Column {
                     dayOptions.chunked(2).forEach { row ->
                         Row(modifier = Modifier.fillMaxWidth()) {

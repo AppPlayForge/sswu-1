@@ -8,11 +8,15 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -47,25 +51,36 @@ fun AddBaZiDialog(
     onSave: (BaZiRecord) -> Unit
 ) {
     // 改用 TextFieldValue 以便控制選取範圍 (Selection)
-    var name by remember { mutableStateOf(TextFieldValue(initialRecord?.name ?: "")) }
+    var surname by remember { mutableStateOf(TextFieldValue(initialRecord?.surname ?: "")) }
+    var givenName by remember { mutableStateOf(TextFieldValue(initialRecord?.givenName ?: "")) }
     var year by remember { mutableStateOf(TextFieldValue(initialRecord?.year?.toString() ?: "1990")) }
     var month by remember { mutableStateOf(TextFieldValue(initialRecord?.month?.toString() ?: "1")) }
     var day by remember { mutableStateOf(TextFieldValue(initialRecord?.day?.toString() ?: "1")) }
     var hour by remember { mutableStateOf(TextFieldValue(initialRecord?.hour?.toString() ?: "12")) }
+    var minute by remember { mutableStateOf(TextFieldValue(initialRecord?.minute?.toString() ?: "0")) }
+    var gender by remember { mutableStateOf(initialRecord?.gender ?: "男") }
+    var province by remember { mutableStateOf(TextFieldValue(initialRecord?.province ?: "")) }
+    var city by remember { mutableStateOf(TextFieldValue(initialRecord?.city ?: "")) }
     var isLunar by remember { mutableStateOf(initialRecord?.isLunar ?: false) }
 
     val focusManager = LocalFocusManager.current
     
+    val focusRequesterSurname = remember { FocusRequester() }
+    val focusRequesterGivenName = remember { FocusRequester() }
     val focusRequesterYear = remember { FocusRequester() }
     val focusRequesterMonth = remember { FocusRequester() }
     val focusRequesterDay = remember { FocusRequester() }
     val focusRequesterHour = remember { FocusRequester() }
+    val focusRequesterMinute = remember { FocusRequester() }
+    val focusRequesterProvince = remember { FocusRequester() }
+    val focusRequesterCity = remember { FocusRequester() }
 
     // 驗證狀態 (讀取 .text 屬性)
     val yearInt = year.text.toIntOrNull()
     val monthInt = month.text.toIntOrNull()
     val dayInt = day.text.toIntOrNull()
     val hourInt = hour.text.toIntOrNull()
+    val minuteInt = minute.text.toIntOrNull()
 
     val isYearError = yearInt == null || yearInt !in 1900..2100
     val isMonthError = monthInt == null || monthInt !in 1..12
@@ -75,6 +90,7 @@ fun AddBaZiDialog(
     val isDayError = dayInt == null || dayInt !in 1..maxDay
     
     val isHourError = hourInt == null || hourInt !in 0..23
+    val isMinuteError = minuteInt == null || minuteInt !in 0..59
 
     val inputTextStyle = TextStyle(fontSize = 18.sp)
     val labelTextStyle = TextStyle(fontSize = 14.sp)
@@ -92,20 +108,57 @@ fun AddBaZiDialog(
             ) 
         },
         text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("姓名 (選填)", style = labelTextStyle) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { if (it.isFocused) name = name.copy(selection = TextRange(0, name.text.length)) },
-                    singleLine = true,
-                    textStyle = inputTextStyle,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    keyboardActions = KeyboardActions(onNext = { focusRequesterYear.requestFocus() })
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = surname,
+                        onValueChange = { surname = it },
+                        label = { Text("姓氏", style = labelTextStyle) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequesterSurname)
+                            .onFocusChanged { if (it.isFocused) surname = surname.copy(selection = TextRange(0, surname.text.length)) },
+                        singleLine = true,
+                        textStyle = inputTextStyle,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusRequesterGivenName.requestFocus() })
+                    )
+                    OutlinedTextField(
+                        value = givenName,
+                        onValueChange = { givenName = it },
+                        label = { Text("名字", style = labelTextStyle) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequesterGivenName)
+                            .onFocusChanged { if (it.isFocused) givenName = givenName.copy(selection = TextRange(0, givenName.text.length)) },
+                        singleLine = true,
+                        textStyle = inputTextStyle,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusRequesterYear.requestFocus() })
+                    )
+                }
                 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("性別", style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    listOf("男", "女").forEach { g ->
+                        val isSelected = gender == g
+                        Button(
+                            onClick = { gender = g },
+                            colors = if (isSelected) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            modifier = Modifier.padding(end = 8.dp)
+                        ) {
+                            Text(g)
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -114,7 +167,10 @@ fun AddBaZiDialog(
                     Switch(checked = isLunar, onCheckedChange = { isLunar = it })
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text("出生時間", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -175,7 +231,10 @@ fun AddBaZiDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(modifier = Modifier.fillMaxWidth()) {
+                Text("出生地點", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
                         value = hour,
                         onValueChange = { hour = it },
@@ -183,33 +242,86 @@ fun AddBaZiDialog(
                             Text("時 (${getHourBranchName(hourInt ?: 0)})", style = labelTextStyle) 
                         },
                         modifier = Modifier
-                            .fillMaxWidth()
+                            .weight(1f)
                             .focusRequester(focusRequesterHour)
                             .onFocusChanged { if (it.isFocused) hour = hour.copy(selection = TextRange(0, hour.text.length)) },
                         textStyle = inputTextStyle,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusRequesterMinute.requestFocus() }),
                         isError = isHourError,
                         supportingText = {
-                            if (isHourError) Text("請輸入 0-23 之間的數字", color = MaterialTheme.colorScheme.error)
+                            if (isHourError) Text("0-23", color = MaterialTheme.colorScheme.error)
                         }
+                    )
+                    OutlinedTextField(
+                        value = minute,
+                        onValueChange = { minute = it },
+                        label = {
+                            Text("分", style = labelTextStyle)
+                        },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequesterMinute)
+                            .onFocusChanged { if (it.isFocused) minute = minute.copy(selection = TextRange(0, minute.text.length)) },
+                        textStyle = inputTextStyle,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusRequesterProvince.requestFocus() }),
+                        isError = isMinuteError,
+                        supportingText = {
+                            if (isMinuteError) Text("0-59", color = MaterialTheme.colorScheme.error)
+                        }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text("出生地點", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = province,
+                        onValueChange = { province = it },
+                        label = { Text("出生省份", style = labelTextStyle) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequesterProvince)
+                            .onFocusChanged { if (it.isFocused) province = province.copy(selection = TextRange(0, province.text.length)) },
+                        textStyle = inputTextStyle,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        keyboardActions = KeyboardActions(onNext = { focusRequesterCity.requestFocus() })
+                    )
+                    OutlinedTextField(
+                        value = city,
+                        onValueChange = { city = it },
+                        label = { Text("城市", style = labelTextStyle) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .focusRequester(focusRequesterCity)
+                            .onFocusChanged { if (it.isFocused) city = city.copy(selection = TextRange(0, city.text.length)) },
+                        textStyle = inputTextStyle,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
                     )
                 }
             }
         },
         confirmButton = {
             Button(
-                enabled = !isYearError && !isMonthError && !isDayError && !isHourError,
+                enabled = !isYearError && !isMonthError && !isDayError && !isHourError && !isMinuteError,
                 onClick = {
-                    val finalName = if (name.text.isBlank()) "未命名" else name.text
                     val record = BaZiRecord(
                         id = initialRecord?.id ?: System.currentTimeMillis(),
-                        name = finalName,
+                        surname = surname.text,
+                        givenName = givenName.text,
+                        gender = gender,
                         year = yearInt!!,
                         month = monthInt!!,
                         day = dayInt!!,
                         hour = hourInt!!,
-                        minute = 0,
+                        minute = minuteInt!!,
+                        province = province.text,
+                        city = city.text,
                         isLunar = isLunar
                     )
                     onSave(record)

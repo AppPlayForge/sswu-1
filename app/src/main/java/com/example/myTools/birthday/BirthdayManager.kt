@@ -29,7 +29,34 @@ object BirthdayManager {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val json = gson.toJson(list)
         prefs.edit { putString(KEY_LIST, json) }
-        rescheduleAllAlarms(context, list)
+    }
+
+    fun addOrUpdateRecord(context: Context, record: BirthdayRecord) {
+        val list = loadList(context).toMutableList()
+        val index = list.indexOfFirst { it.id == record.id }
+        
+        // 如果是編輯，先取消舊的鬧鐘（基於 ID 的所有組合）
+        cancelAlarm(context, record)
+        
+        if (index != -1) {
+            list[index] = record
+        } else {
+            list.add(record)
+        }
+        
+        saveList(context, list)
+        // 設定新的鬧鐘
+        scheduleBirthdayAlarm(context, record)
+    }
+
+    fun deleteRecord(context: Context, id: Long) {
+        val list = loadList(context)
+        val recordToRemove = list.find { it.id == id }
+        if (recordToRemove != null) {
+            cancelAlarm(context, recordToRemove)
+            val newList = list.filter { it.id != id }
+            saveList(context, newList)
+        }
     }
 
     @SuppressLint("ScheduleExactAlarm")
@@ -77,9 +104,13 @@ object BirthdayManager {
     fun cancelAlarm(context: Context, record: BirthdayRecord) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, BirthdayReceiver::class.java)
-        // 遍歷可能的提醒組合進行取消
-        for (d in 0..30) {
-            for (h in 0..23) {
+        
+        // 優化：僅遍歷 UI 中允許的提醒組合進行取消，減少不必要的循環
+        val allPossibleDays = listOf(0, 1, 3, 7)
+        val allPossibleHours = listOf(9, 14, 19)
+        
+        allPossibleDays.forEach { d ->
+            allPossibleHours.forEach { h ->
                 val uniqueRequestCode = (record.id % 100000).toInt() + (d * 100000) + (h * 100)
                 val pendingIntent = PendingIntent.getBroadcast(
                     context, 

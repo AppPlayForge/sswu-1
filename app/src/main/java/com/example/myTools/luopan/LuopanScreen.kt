@@ -1,5 +1,8 @@
 package com.example.myTools.luopan
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import android.hardware.SensorManager
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.Animatable
@@ -12,8 +15,11 @@ import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material3.*
@@ -60,22 +66,23 @@ val sixtyFourHexagrams = listOf(
     "否", "萃", "晉", "豫", "觀", "比", "剝", "坤"
 )
 
-// 八個方位
+// 八個方位 (改為中文，方便閱讀)
 val directions = listOf(
-    "N" to 0, "NE" to 45, "E" to 90, "SE" to 135,
-    "S" to 180, "SW" to 225, "W" to 270, "NW" to 315
+    "北" to 0, "東北" to 45, "東" to 90, "東南" to 135,
+    "南" to 180, "西南" to 225, "西" to 270, "西北" to 315
 )
 
 @Composable
-fun LuopanScreen() {
+fun LuopanScreen(onBack: () -> Unit) {
     // 保持螢幕常亮
     KeepScreenOn()
 
     val context = LocalContext.current
     val compassManager = remember { CompassManager(context) }
 
-    // 角度動畫
+    // 角度與精準度狀態
     val smoothAzimuth = remember { Animatable(0f) }
+    var sensorAccuracy by remember { mutableIntStateOf(SensorManager.SENSOR_STATUS_ACCURACY_HIGH) }
 
     // 縮放與平移狀態
     var zoomLevel by remember { mutableFloatStateOf(1f) }
@@ -85,12 +92,24 @@ fun LuopanScreen() {
     val animatedOffset by animateOffsetAsState(targetValue = panOffset, animationSpec = tween(400), label = "Pan")
 
     LaunchedEffect(Unit) {
-        compassManager.azimuthFlow.collectLatest { targetDegree ->
+        compassManager.compassFlow.collectLatest { data ->
+            sensorAccuracy = data.accuracy
+            
+            val targetDegree = data.azimuth
             val current = smoothAzimuth.value
             var target = targetDegree
+            
             if (current - target > 180) target += 360
             else if (target - current > 180) target -= 360
-            smoothAzimuth.animateTo(target, animationSpec = tween(200)) // 縮短動畫時間，反應更快
+            
+            // 使用 Spring 動畫：反應極快且具備物理真實感，不會像 tween 那樣死板
+            smoothAzimuth.animateTo(
+                target, 
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMedium
+                )
+            )
         }
     }
 
@@ -125,14 +144,14 @@ fun LuopanScreen() {
                     .align(Alignment.Center)
                     .fillMaxWidth(0.95f)
                     .aspectRatio(1f)
-                    .graphicsLayer(
-                        scaleX = animatedZoom,
-                        scaleY = animatedZoom,
-                        translationX = animatedOffset.x,
-                        translationY = animatedOffset.y,
-                        // 這裡進行旋轉：反向旋轉以抵消手機轉動，保持北方朝上
+                    .graphicsLayer {
+                        // ★ 性能優化：在 Lambda 中讀取值，僅觸發 Layer 旋轉，不觸發 Recomposition ★
+                        scaleX = animatedZoom
+                        scaleY = animatedZoom
+                        translationX = animatedOffset.x
+                        translationY = animatedOffset.y
                         rotationZ = -smoothAzimuth.value
-                    )
+                    }
             )
         }
 
@@ -154,21 +173,66 @@ fun LuopanScreen() {
         }
 
         // 3. UI 覆蓋層
-        if (zoomLevel == 1f) {
-            Column(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 64.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .align(Alignment.TopCenter)
+                .padding(top = 48.dp, start = 8.dp, end = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // 第一行：包含返回按鈕與標題文字
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
             ) {
-                Text("風水羅盤 (九運)", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(8.dp))
+                // 返回按鈕 (靠左對齊)
+                IconButton(
+                    onClick = onBack,
+                    modifier = Modifier.align(Alignment.CenterStart)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "返回",
+                        tint = Color.White
+                    )
+                }
+
+                // 標題文字 (居中對齊)
+                if (zoomLevel == 1f) {
+                    Text(
+                        "風水羅盤 (九運)",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            // 第二行：度數文字 (僅在全覽模式顯示)
+            if (zoomLevel == 1f) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${displayDegree.toInt()}°",
                     color = Color(0xFFFFD700),
-                    fontSize = 40.sp,
+                    fontSize = 32.sp,
                     fontWeight = FontWeight.Bold
                 )
+
+                // 磁場校正提示
+                if (sensorAccuracy < SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        color = Color.Red.copy(alpha = 0.8f),
+                        shape = RoundedCornerShape(4.dp)
+                    ) {
+                        Text(
+                            "請揮動手機以校正磁場 (畫8字)",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                        )
+                    }
+                }
             }
         }
 
@@ -182,11 +246,12 @@ fun LuopanScreen() {
                 modifier = Modifier
                     .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                     .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ZoomButton(Icons.Default.KeyboardArrowUp, "頂部", { zoomLevel = 2.5f; panOffset = Offset(0f, 1100f) }, zoomLevel > 1f && panOffset.y > 500f)
-                ZoomButton(Icons.Default.CenterFocusStrong, "中心", { zoomLevel = 2.5f; panOffset = Offset.Zero }, zoomLevel > 1f && abs(panOffset.y) < 100f)
-                ZoomButton(Icons.Default.KeyboardArrowDown, "底部", { zoomLevel = 2.5f; panOffset = Offset(0f, -1100f) }, zoomLevel > 1f && panOffset.y < -500f)
+                ZoomButton(Icons.Default.KeyboardArrowUp, "北", { zoomLevel = 2.5f; panOffset = Offset(0f, 1100f) }, zoomLevel > 1f && panOffset.y > 500f)
+                ZoomButton(Icons.Default.KeyboardArrowDown, "南", { zoomLevel = 2.5f; panOffset = Offset(0f, -1100f) }, zoomLevel > 1f && panOffset.y < -500f)
+                ZoomButton(Icons.Default.KeyboardArrowLeft, "西", { zoomLevel = 2.5f; panOffset = Offset(1100f, 0f) }, zoomLevel > 1f && panOffset.x > 500f)
+                ZoomButton(Icons.Default.KeyboardArrowRight, "東", { zoomLevel = 2.5f; panOffset = Offset(-1100f, 0f) }, zoomLevel > 1f && panOffset.x < -500f)
                 ZoomButton(Icons.Default.ZoomOutMap, "全覽", { zoomLevel = 1f; panOffset = Offset.Zero }, zoomLevel == 1f)
             }
         }

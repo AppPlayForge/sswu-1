@@ -51,7 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,6 +60,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.settings.AppSettingsDialog
 import com.example.myTools.ui.CommonTopBar
 import com.example.myTools.ui.DeleteConfirmDialog
+import com.example.myTools.ui.ThreeDIconButton
 import com.nlf.calendar.EightChar
 import com.nlf.calendar.Lunar
 import com.nlf.calendar.Solar
@@ -77,6 +77,7 @@ fun BaZiScreen() {
     var selectedRecord by remember { mutableStateOf<BaZiRecord?>(null) }
 
     Scaffold(
+        containerColor = Color.Transparent, // 讓底色透出來
         topBar = {
             CommonTopBar(
                 title = "八字命盤",
@@ -89,7 +90,7 @@ fun BaZiScreen() {
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             ) {
-                Icon(Icons.Default.Add, contentDescription = "添加紀錄")
+                Icon(Icons.Default.Add, contentDescription = "添加八字")
             }
         }
     ) { padding ->
@@ -142,7 +143,7 @@ fun BaZiScreen() {
 
     if (recordToDelete != null) {
         DeleteConfirmDialog(
-            message = "確定要刪除 ${recordToDelete!!.name} 的八字紀錄嗎？",
+            message = "要刪除 ${recordToDelete!!.name} 的八字紀錄嗎？",
             onDismiss = { recordToDelete = null },
             onConfirm = {
                 BaZiManager.deleteRecord(context, recordToDelete!!.id)
@@ -172,8 +173,8 @@ fun BaZiRecordItem(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -183,15 +184,15 @@ fun BaZiRecordItem(
             // 立體效果的主圖標
             Surface(
                 shape = CircleShape,
-                color = Color(0xFFF5F5F5),
-                shadowElevation = 4.dp,
+                color = MaterialTheme.colorScheme.surfaceVariant,
+                shadowElevation = 2.dp,
                 modifier = Modifier.size(48.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.Person,
                         null,
-                        tint = Color(0xFF616161),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(28.dp)
                     )
                 }
@@ -200,7 +201,11 @@ fun BaZiRecordItem(
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = record.name, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = record.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = record.gender, fontSize = 14.sp, color = if (record.gender == "女") Color.Magenta else Color.Blue)
+                }
                 val typeStr = if (record.isLunar) "農曆" else "公曆"
                 Text(
                     text = "$typeStr: ${record.year}-${record.month}-${record.day} ${
@@ -212,7 +217,7 @@ fun BaZiRecordItem(
                         )
                     }",
                     fontSize = 16.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -221,29 +226,6 @@ fun BaZiRecordItem(
                 Spacer(modifier = Modifier.width(12.dp))
                 ThreeDIconButton(icon = Icons.Default.Delete, onClick = onDelete)
             }
-        }
-    }
-}
-
-@Composable
-fun ThreeDIconButton(
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Surface(
-        onClick = onClick,
-        shape = CircleShape,
-        color = Color(0xFFF5F5F5),
-        shadowElevation = 3.dp,
-        modifier = Modifier.size(36.dp)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = Color(0xFF616161),
-                modifier = Modifier.size(20.dp)
-            )
         }
     }
 }
@@ -285,14 +267,14 @@ fun BaZiDetailDialog(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text("${record.name} 的八字命盤") },
+                        title = { Text("八字命盤") },
                         navigationIcon = {
                             IconButton(onClick = onDismiss) {
                                 Icon(Icons.Default.Close, contentDescription = "關閉")
                             }
                         },
                         actions = {
-                            // 複製按鈕放在顯眼位置
+                            // 諮詢 AI 按鈕
                             TextButton(onClick = {
                                 val copyText = """
                                    你是一位精通中國傳統命理學的玄學大家，
@@ -300,7 +282,10 @@ fun BaZiDetailDialog(
                                    現在請為以下緣主進行深度、詳細的「綜合命書」論斷。
                                    
                                    【緣主基本資料】
-                                    姓名：${record.name}
+                                    姓氏：${record.surname}
+                                    名字：${record.givenName}
+                                    性別：${record.gender}
+                                    出生地點：${record.province} ${record.city}
                                     出生公曆：${solar.toFullString()}
                                     出生農曆：$lunar
                                     
@@ -313,14 +298,13 @@ fun BaZiDetailDialog(
                                     五行分布：${baZi.yearWuXing}${baZi.monthWuXing}${baZi.dayWuXing}${baZi.timeWuXing}
                                     
                                     請依據上述資料，撰寫一份結構嚴謹、條理分明且極具深度與細節的「個人命書」，並嚴格依據以下五大核心模塊展開詳細分析：
-                                    ---
-                                    ### 一、 命格總攬與性格特質深度剖析
+                                    一、 命格總覽與性格特質深度剖析
                                     1. 【八字格局】分析日主強弱、定格（如食神格、正官格等），並說明此格局的核心心性。
                                     2. 【紫微主星】結合紫微斗數，分析命宮、身宮的主星與輔星組合（如紫微獨坐、殺破狼格等），論述其外在顯化與內在隱藏的性格。
                                     3. 【性格雙重性】請以中立客觀的角度，既指出其性格上的優勢與大氣之處，也要直言不諱地指出其潛在的性格盲點、心魔或容易自我糾結的地方。
 
-                                    ### 二、 五行喜忌與轉運指南（行業、服飾、顏色）
-                                    1. 【喜用神推算】精確找出本命的「喜神」與「用神」，並說明為何此五行能起到調候、通關或扶抑的作用。
+                                    二、 五行喜忌與轉運指南（行業、服飾、顏色）
+                                    1. 【喜用神推算】精確找出本命的「喜神」與「用神」，並說明為何此五行能起到調候、通關 or 扶抑的作用。
                                     2. 【適合行業與發展方位】
                                        - 根據喜用五行，列出具體的現代職業與行業方向（請給出具體且符合現代社會的行業，而非古代術語）。
                                        - 指出最適合求財與發展的「地理方位」（以出生地為基準）。
@@ -328,19 +312,19 @@ fun BaZiDetailDialog(
                                        - 適合的服裝顏色、日常幸運色搭配建議。
                                        - 適合的材質（如金屬、木質、水晶等）或配飾建議。
 
-                                    ### 三、 財運與事業格局（一生財富論）
+                                    三、 財運與事業格局（一生財富論）
                                     1. 【財庫與財源】分析八字中的正財、偏財透藏情況，以及紫微斗數中「財帛宮」與「田宅宮」的吉凶，論述此生是屬於「勞碌求財」、「穩健聚財」還是「暴發型財運」。
                                     2. 【奇門財利局】引入奇門遁甲視角，推算其一生財路中容易遇到的「生門」與「傷門」特徵，並給予具體的守財與投資理財建議。
 
-                                    ### 四、 官非、小人與人生關煞（風險預警）
+                                    四、 官非、小人與人生關煞（風險預警）
                                     1. 【官非與訴訟風險】分析八字中是否帶有「傷官見官」、「梟神奪食」或地支刑沖，以及紫微斗數中「官祿宮/遷移宮」是否有擎羊、陀羅、化忌等煞星引動。
                                     2. 【小人與口舌】評估一生中何時容易遭遇小人中傷、合夥背叛或合同糾紛（官非）。
                                     3. 【趨吉避凶指南】給出具體的心態調整與行事作風建議，如何防範法律風險與人際衝突。
 
-                                    ### 五、 歲運流年與奇門開運總結
+                                    五、 歲運流年與奇門開運總結
                                     1. 【大運起伏趨勢】簡述目前所行大運的吉凶交接點，未來幾年（特別是近3-5年）需要注意的關鍵年份。
                                     2. 【奇門局終極點評】以奇門遁甲的「三奇六儀」與「八門九星」為這份命書做一個總結性的開運寄語，指引人生方向。
-                                    ---
+                                    
                                     提示：請保持語氣專業、悲憫、客觀、直言不諱。多用具體的命理術語搭配白話文詳細解釋，避免流於表面、模稜兩可的套話。請開始你詳細的論斷。 
                                 """.trimIndent()
                                 val clipboard =
@@ -349,13 +333,51 @@ fun BaZiDetailDialog(
                                 clipboard.setPrimaryClip(clip)
                                 Toast.makeText(
                                     context,
-                                    "命盤數據已複製，請粘貼到 AI 進行諮詢",
+                                    "命盤數據已複製，請粘貼到AI諮詢",
                                     Toast.LENGTH_LONG
                                 ).show()
                             }) {
                                 Icon(Icons.Default.ContentCopy, contentDescription = null)
                                 Spacer(Modifier.width(4.dp))
-                                Text("複製數據諮詢 AI")
+                                Text("諮詢AI")
+                            }
+
+                            // AI 起名按鈕
+                            TextButton(onClick = {
+                                val copyText = """
+                                   請根據以下緣主的八字和五行，給出起名字的建議（避開諧音）：
+                                   
+                                   【緣主基本資料】
+                                    姓氏：${record.surname}
+                                    名字：${record.givenName} (目前)
+                                    性別：${record.gender}
+                                    出生地點：${record.province} ${record.city}
+                                    出生公曆：${solar.toFullString()}
+                                    出生農曆：$lunar
+                                    
+                                    八字四柱：
+                                    年柱：${baZi.year} (${baZi.yearShiShenGan}, 納音: ${baZi.yearNaYin})
+                                    月柱：${baZi.month} (${baZi.monthShiShenGan}, 納音: ${baZi.monthNaYin})
+                                    日柱：${baZi.day} (日主, 納音: ${baZi.dayNaYin})
+                                    時柱：${baZi.time} (${baZi.timeShiShenGan}, 納音: ${baZi.timeWuXing})
+                                    
+                                    五行分布：${baZi.yearWuXing}${baZi.monthWuXing}${baZi.dayWuXing}${baZi.timeWuXing}
+                                    
+                                    提示：請結合姓氏「${record.surname}」進行起名，要求音韻優美，寓意深遠，且能補益八字五行之不足。
+                                """.trimIndent()
+                                val clipboard =
+                                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("BaZi Naming", copyText)
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(
+                                    context,
+                                    "起名需求已複製，請粘貼到AI",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }) {
+                                Icon(Icons.Default.Edit, contentDescription = null)
+                                Spacer(Modifier.width(4.dp))
+                                Text("AI起名")
                             }
                         }
                     )
@@ -373,6 +395,12 @@ fun BaZiDetailDialog(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
+                            val placeStr = if (record.province.isEmpty() && record.city.isEmpty()) "未填寫" else "${record.province} ${record.city}"
+                            
+                            InfoRow("姓氏", record.surname)
+                            InfoRow("名字", record.givenName)
+                            InfoRow("性別", record.gender)
+                            InfoRow("出生地", placeStr)
                             InfoRow("公曆出生", solarFullStr)
                             InfoRow("農曆出生", lunar.toString())
                         }

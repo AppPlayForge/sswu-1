@@ -13,7 +13,7 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -75,9 +75,13 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     // 1. 農曆算法庫
-    implementation("cn.6tail:lunar:1.7.7")
+    implementation(libs.lunar)
     // 2. 擴展圖標庫
     implementation(libs.androidx.compose.material.icons.extended)
     // 3. Gson
-    implementation("com.google.code.gson:gson:2.13.2")
+    implementation(libs.gson)
+
+    // 4. CarSpeed Location Services  定位服務
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 }

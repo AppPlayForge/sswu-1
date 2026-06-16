@@ -40,6 +40,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -68,6 +69,9 @@ fun AuspiciousQueryScreen() {
     // 控制年月選擇對話框的開關
     var showDatePickerDialog by remember { mutableStateOf(false) }
 
+    // 當前點選查看詳情的吉日
+    var selectedDayDetail by remember { mutableStateOf<Lunar?>(null) }
+
     // 搜尋結果列表
     val auspiciousDays = remember(selectedYear, selectedMonth, selectedCategory) {
         findAuspiciousDays(selectedYear, selectedMonth, selectedCategory)
@@ -83,28 +87,14 @@ fun AuspiciousQueryScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFFDF5E6))
+            .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(16.dp)
+            .padding(horizontal = 16.dp)
     ) {
-        // 1. 標題
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Search, contentDescription = null, tint = Color(0xFF5D4037))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "吉日查詢",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF5D4037)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        // 2. 年月選擇器 (點擊中間可以直接彈出選擇框)
+        // 2. 年月選擇器
         Card(
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
             Row(
@@ -169,7 +159,7 @@ fun AuspiciousQueryScreen() {
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = Color(0xFFB71C1C),
                         selectedLabelColor = Color.White,
-                        containerColor = Color.White
+                        containerColor = MaterialTheme.colorScheme.surface
                     )
                 )
             }
@@ -190,9 +180,17 @@ fun AuspiciousQueryScreen() {
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(auspiciousDays) { lunar ->
-                AuspiciousDayCard(lunar)
+                AuspiciousDayCard(lunar, onClick = { selectedDayDetail = lunar })
             }
         }
+    }
+
+    // ★ 彈出詳情對話框 ★
+    selectedDayDetail?.let { lunar ->
+        AuspiciousDetailDialog(
+            lunar = lunar,
+            onDismiss = { selectedDayDetail = null }
+        )
     }
 
     // ★ 彈出年月選擇對話框 ★
@@ -297,12 +295,85 @@ fun YearMonthPickerDialog(
     )
 }
 
+// --- 吉日詳情對話框 ---
+@Composable
+fun AuspiciousDetailDialog(
+    lunar: Lunar,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "吉日詳情",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF5D4037)
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // 公曆農曆對比
+                DetailRow("公曆", "${lunar.solar.year}年${lunar.solar.month}月${lunar.solar.day}日 ${lunar.weekInChinese}")
+                DetailRow("農曆", "${lunar.yearInChinese}年${lunar.monthInChinese}月${lunar.dayInChinese}")
+                DetailRow("干支", "${lunar.yearInGanZhi}年 ${lunar.monthInGanZhi}月 ${lunar.dayInGanZhi}日")
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // 宜
+                Row {
+                    Text("【宜】", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(
+                        text = lunar.dayYi.joinToString("、"),
+                        fontSize = 15.sp,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
+                }
+
+                // 忌
+                Row {
+                    Text("【忌】", color = Color(0xFFC62828), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text(
+                        text = lunar.dayJi.joinToString("、"),
+                        fontSize = 15.sp,
+                        modifier = Modifier.padding(top = 1.dp)
+                    )
+                }
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // 沖煞
+                Text(
+                    text = "沖：${lunar.dayChongDesc} | 煞：${lunar.daySha}",
+                    color = Color.Gray,
+                    fontSize = 16.sp
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("確定", color = Color(0xFFB71C1C), fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
+fun DetailRow(label: String, value: String) {
+    Row {
+        Text("$label：", color = Color.Gray, fontWeight = FontWeight.Medium, fontSize = 16.sp)
+        Text(value, color = Color.Black, fontSize = 16.sp)
+    }
+}
+
 // 卡片組件
 @Composable
-fun AuspiciousDayCard(lunar: Lunar) {
+fun AuspiciousDayCard(lunar: Lunar, onClick: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(6.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
     ) {
         Row(
             modifier = Modifier
@@ -310,22 +381,30 @@ fun AuspiciousDayCard(lunar: Lunar) {
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 左側日期區域優化 (添加農曆標識與圖標感)
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .background(Color(0xFFFFF3E0), RoundedCornerShape(8.dp))
-                    .padding(10.dp)
+                    .width(60.dp)
+                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                    .padding(vertical = 8.dp)
             ) {
-                Text(
-                    text = "${lunar.day}",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE65100)
+                Icon(
+                    Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = Color(0xFFB71C1C),
+                    modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = lunar.weekInChinese,
-                    fontSize = 14.sp,
-                    color = Color.Gray
+                    text = lunar.dayInChinese, // 使用 "十六" 而非 "16"，更有農曆感
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB71C1C)
+                )
+                Text(
+                    text = "周${lunar.weekInChinese}",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
@@ -335,13 +414,14 @@ fun AuspiciousDayCard(lunar: Lunar) {
                 Text(
                     text = "陽曆：${lunar.solar.year}年${lunar.solar.month}月${lunar.solar.day}日",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${lunar.monthInGanZhi}月 ${lunar.dayInGanZhi}日",
                     fontSize = 16.sp,
-                    color = Color.Gray
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(

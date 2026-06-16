@@ -2,20 +2,13 @@ package com.example.myTools.settings
 
 import android.Manifest
 import android.app.AlarmManager
-import android.content.ClipData
-import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -33,19 +26,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Subscriptions
 import androidx.compose.material.icons.filled.Support
+import androidx.compose.ui.res.painterResource
+import com.example.myTools.R
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -53,18 +46,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,10 +63,10 @@ import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.myTools.R
+import com.example.myTools.BuildConfig
 
 /**
- * 應用的通用設置對話框 - 重新設計的 UI
+ * 應用的通用設置對話框 - 符合 Material Design 3 標準
  */
 @Composable
 fun AppSettingsDialog(onDismiss: () -> Unit) {
@@ -113,57 +101,59 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
         (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).canScheduleExactAlarms()
     }
 
-    val notificationLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionUpdateTrigger++ }
-    val locationLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { permissionUpdateTrigger++ }
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.95f),
-            shape = RoundedCornerShape(16.dp),
-            color = Color(0xFFFFFDF7)
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .border(
+                    width = 0.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(24.dp)
+                ),
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp // M3 標準的對話框提升感
         ) {
             Column(
                 modifier = Modifier
-                    .padding(16.dp)
+                    .padding(20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
+                Text(
+                    text = "應用設置",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
                 // 分組 1：權限管理
                 SettingsGroup(title = "功能權限", icon = Icons.Default.Security) {
                     PermissionRow(
                         title = "通知提醒",
                         isGranted = isNotificationGranted,
-                        onClick = {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            } else {
-                                openAppSettings(context)
-                            }
-                        }
+                        onClick = { openNotificationSettings(context) }
                     )
                     PermissionRow(
                         title = "定位服務",
                         isGranted = isGpsGranted,
-                        onClick = { locationLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
+                        onClick = { openAppSettings(context) }
                     )
                     PermissionRow(
                         title = "精確鬧鐘",
                         isGranted = isAlarmGranted,
                         onClick = {
-                            val intent =
-                                Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
-                                    data = Uri.fromParts("package", context.packageName, null)
-                                }
+                            val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM).apply {
+                                data = Uri.fromParts("package", context.packageName, null)
+                            }
                             context.startActivity(intent)
                         }
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // 分組 2：關於與聯繫
                 SettingsGroup(title = "關於與支持", icon = Icons.Default.Support) {
@@ -177,8 +167,7 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                             }
                             try {
                                 context.startActivity(intent)
-                            } catch (e: Exception) {
-                            }
+                            } catch (_: Exception) {}
                         }
                     )
 
@@ -188,38 +177,35 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("關注我們", modifier = Modifier.weight(1f), fontSize = 16.sp)
+                        Text(
+                            "關注我們", 
+                            modifier = Modifier.weight(1f), 
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                         IconButton(onClick = {
-                            val intent =
-                                Intent(Intent.ACTION_VIEW, "https://youtu.be/SDCEfVyvQis".toUri())
+                            val intent = Intent(Intent.ACTION_VIEW, "https://youtu.be/SDCEfVyvQis".toUri())
                             context.startActivity(intent)
-
                         }) {
                             Icon(Icons.Default.PlayCircle, "Youtube", tint = Color.Red)
                         }
 
                         IconButton(onClick = {
-                            val intent = Intent(
-                                Intent.ACTION_VIEW,
-                                "https://m.bilibili.com/space/297639121".toUri()
-                            )
+                            val intent = Intent(Intent.ACTION_VIEW, "https://m.bilibili.com/space/297639121".toUri())
                             context.startActivity(intent)
                         }) {
-                            Icon(Icons.Default.Subscriptions, "Bilibili", tint = Color(0xFFFB7299))
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_bilibili),
+                                contentDescription = "Bilibili",
+                                tint = Color.Unspecified // 使用向量圖自帶的粉色
+                            )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-                // 分組 3：打賞支持
-                SettingsGroup(title = "讚賞支持", icon = Icons.Default.Support) {
-                    SupportSection(context)
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // 分組 4：作者作品
+                // 分組 3：作者作品
                 SettingsGroup(title = "更多作品", icon = Icons.Default.Code) {
                     WorkLinkItem(
                         title = "分享App",
@@ -228,20 +214,28 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                     WorkLinkItem(title = "其它應用", url = "https://github.com/AppPlayForge")
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // 底部信息
                 Column(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text("版本號: v1.1.1", fontSize = 14.sp, color = Color.Gray)
-                    TextButton(onClick = onDismiss) {
+                    Text(
+                        "版本號: v${BuildConfig.VERSION_NAME}", //開發者只需在 build.gradle.kts 中修改版本號，全應用都會自動更新。
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         Text(
                             "返回",
-                            fontSize = 18.sp,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFF8BC34A)
+                            color = MaterialTheme.colorScheme.primary
                         )
                     }
                 }
@@ -253,28 +247,40 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
 @Composable
 fun SettingsGroup(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(2.dp),
-        shape = RoundedCornerShape(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(
+                0.5.dp, 
+                MaterialTheme.colorScheme.outlineVariant, 
+                RoundedCornerShape(16.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        ),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     icon,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                    tint = Color(0xFF795548)
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary
                 )
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     title,
+                    style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Color(0xFF795548)
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), thickness = 0.5.dp)
+            HorizontalDivider(
+                modifier = Modifier.padding(vertical = 12.dp),
+                thickness = 0.5.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
             content()
         }
     }
@@ -290,212 +296,28 @@ fun WorkLinkItem(title: String, url: String) {
                 val intent = Intent(Intent.ACTION_VIEW, url.toUri())
                 context.startActivity(intent)
             }
-            .padding(vertical = 10.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
             Icons.Default.Language,
             contentDescription = null,
             modifier = Modifier.size(20.dp),
-            tint = Color.Gray
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.width(12.dp))
-        Text(title, modifier = Modifier.weight(1f), fontSize = 16.sp)
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.LightGray)
-    }
-}
-
-@Composable
-fun SupportSection(context: Context) {
-    var wechatExpanded by remember { mutableStateOf(false) }
-    var cryptoExpanded by remember { mutableStateOf(false) }
-
-    val wechatRotation by animateFloatAsState(
-        targetValue = if (wechatExpanded) 180f else 0f,
-        label = "wechatRotation"
-    )
-    val cryptoRotation by animateFloatAsState(
-        targetValue = if (cryptoExpanded) 180f else 0f,
-        label = "cryptoRotation"
-    )
-
-    Column(modifier = Modifier.fillMaxWidth()) {
-        // 微信部分
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { wechatExpanded = !wechatExpanded }
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "微信掃碼支持",
-                fontSize = 14.sp,
-                color = Color(0xFF4CAF50),
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = Color(0xFF4CAF50),
-                modifier = Modifier.rotate(wechatRotation)
-            )
-        }
-
-        AnimatedVisibility(visible = wechatExpanded) {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Image(
-                    painter = painterResource(id = R.drawable.wechat_pay_qr),
-                    contentDescription = "微信收款碼",
-                    modifier = Modifier
-                        .size(160.dp)
-                        .align(Alignment.CenterHorizontally)
-                        .clip(RoundedCornerShape(8.dp)),
-                    contentScale = ContentScale.Fit
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-        }
-
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 8.dp),
-            thickness = 0.5.dp,
-            color = Color.LightGray.copy(alpha = 0.3f)
+        Text(
+            title, 
+            modifier = Modifier.weight(1f), 
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface
         )
-
-        // 加密貨幣部分
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { cryptoExpanded = !cryptoExpanded }
-                .padding(vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                "加密貨幣支持(USDT)",
-                fontSize = 14.sp,
-                color = Color(0xFF26A17B),
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Default.ExpandMore,
-                contentDescription = null,
-                tint = Color(0xFF26A17B),
-                modifier = Modifier.rotate(cryptoRotation)
-            )
-        }
-
-        AnimatedVisibility(visible = cryptoExpanded) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
-            ) {
-                val baseAddress = "0x82C1Fb29DcAB7C69842A17e9c56887185857d61E"
-                val tronAddress = "TXdXDAZaaA2M9mCbXusUVXsBAT3Bfq13M3"
-
-                // Base / EVM Section
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.base_pay_qr),
-                        contentDescription = "Base QR",
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Base網絡",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF26A17B)
-                    )
-                    CryptoAddressRow(
-                        context = context,
-                        label = "Base錢包地址",
-                        address = baseAddress
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.3f))
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Tron Section
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.tron_pay_qr),
-                        contentDescription = "Tron QR",
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(RoundedCornerShape(8.dp)),
-                        contentScale = ContentScale.Fit
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        "Tron網絡",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF26A17B)
-                    )
-                    CryptoAddressRow(
-                        context = context,
-                        label = "Tron錢包地址",
-                        address = tronAddress
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    "⚠️ 警告：複製的錢包地址必須對應網絡 (Base或Tron)，錯誤的選擇將導致資產永久丟失。",
-                    fontSize = 14.sp,
-                    color = Color.Red.copy(alpha = 0.7f),
-                    lineHeight = 18.sp,
-                    modifier = Modifier.padding(horizontal = 4.dp)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CryptoAddressRow(context: Context, label: String, address: String) {
-    Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        ) {
-            Text(
-                address,
-                fontSize = 10.sp,
-                color = Color.DarkGray,
-                maxLines = 1
-            )
-            IconButton(
-                onClick = {
-                    val clipboard =
-                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clipboard.setPrimaryClip(ClipData.newPlainText(label, address))
-                    Toast.makeText(context, "已複製 $label", Toast.LENGTH_SHORT).show()
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.ContentCopy,
-                    null,
-                    modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF26A17B)
-                )
-            }
-        }
+        Icon(
+            Icons.Default.ChevronRight, 
+            contentDescription = null, 
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(16.dp)
+        )
     }
 }
 
@@ -505,14 +327,20 @@ private fun PermissionRow(title: String, isGranted: Boolean, onClick: () -> Unit
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(text = title, modifier = Modifier.weight(1f), fontSize = 16.sp)
+        Text(
+            text = title, 
+            modifier = Modifier.weight(1f), 
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
         Icon(
             imageVector = if (isGranted) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (isGranted) Color(0xFF4CAF50) else Color.Gray
+            tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(24.dp)
         )
     }
 }
@@ -523,11 +351,26 @@ fun SettingsItem(title: String, subtitle: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
-            .padding(vertical = 8.dp)
+            .padding(vertical = 10.dp)
     ) {
-        Text(title, fontSize = 16.sp)
-        Text(subtitle, fontSize = 12.sp, color = Color.Gray)
+        Text(
+            title, 
+            fontSize = 16.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            subtitle, 
+            fontSize = 13.sp, 
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
+}
+
+private fun openNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+        putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+    }
+    context.startActivity(intent)
 }
 
 private fun openAppSettings(context: Context) {

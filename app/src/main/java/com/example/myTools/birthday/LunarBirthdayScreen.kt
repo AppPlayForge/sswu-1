@@ -119,7 +119,7 @@ fun LunarBirthdayScreen() {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFFFDFDF6)
+                    containerColor = MaterialTheme.colorScheme.surface
                 )
             )
         },
@@ -135,7 +135,7 @@ fun LunarBirthdayScreen() {
                 Icon(Icons.Default.Add, contentDescription = "新增")
             }
         },
-        containerColor = Color(0xFFFDFDF6)
+        containerColor = Color.Transparent
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -216,35 +216,26 @@ fun LunarBirthdayScreen() {
                         editingRecord = null
                     },
                     onConfirm = { name, month, day, reminds, hours ->
-                        val newList = birthdayList.toMutableList()
-                        if (editingRecord != null) {
-                            // 編輯模式
-                            val index = newList.indexOfFirst { it.id == editingRecord!!.id }
-                            if (index != -1) {
-                                newList[index] = editingRecord!!.copy(
-                                    name = name,
-                                    lunarMonth = month,
-                                    lunarDay = day,
-                                    remindList = reminds,
-                                    remindHours = hours
-                                )
-                            }
+                        val record = if (editingRecord != null) {
+                            editingRecord!!.copy(
+                                name = name,
+                                lunarMonth = month,
+                                lunarDay = day,
+                                remindList = reminds,
+                                remindHours = hours
+                            )
                         } else {
-                            // 新增模式
-                            newList.add(
-                                BirthdayRecord(
-                                    name = name,
-                                    lunarMonth = month,
-                                    lunarDay = day,
-                                    remindList = reminds,
-                                    remindHours = hours
-                                )
+                            BirthdayRecord(
+                                name = name,
+                                lunarMonth = month,
+                                lunarDay = day,
+                                remindList = reminds,
+                                remindHours = hours
                             )
                         }
 
-                        // 保存數據並更新 UI
-                        BirthdayManager.saveList(context, newList)
-                        birthdayList = newList
+                        BirthdayManager.addOrUpdateRecord(context, record)
+                        birthdayList = BirthdayManager.loadList(context)
 
                         showAddDialog = false
                         editingRecord = null
@@ -258,9 +249,8 @@ fun LunarBirthdayScreen() {
                     message = "要刪除 ${recordToDelete!!.name} 的生日提醒嗎？",
                     onDismiss = { recordToDelete = null },
                     onConfirm = {
-                        val newList = birthdayList.filter { it.id != recordToDelete!!.id }
-                        BirthdayManager.saveList(context, newList)
-                        birthdayList = newList
+                        BirthdayManager.deleteRecord(context, recordToDelete!!.id)
+                        birthdayList = BirthdayManager.loadList(context)
                         recordToDelete = null
                     }
                 )

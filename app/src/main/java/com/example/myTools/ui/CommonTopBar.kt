@@ -12,7 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 fun CommonTopBar(
     title: String,
     onSettingsClick: () -> Unit,
-    containerColor: Color = Color(0xFFFDFDF6)
+    containerColor: Color = MaterialTheme.colorScheme.surface
 ) {
     CenterAlignedTopAppBar(
         title = { Text(title, fontWeight = FontWeight.Bold) },

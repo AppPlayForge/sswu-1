@@ -4,13 +4,17 @@
 
     <!-- 現有的權限 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <!-- 通知權限 (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- 前台服務權限 -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE"
+        tools:ignore="ForegroundServicePermission" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
 
     <!-- 設置精確鬧鐘權限 (Android 12+) -->
     <!-- 移除 USE_EXACT_ALARM 以確保權限是由用戶自主選擇開啟，而不是安裝後自動獲得 -->
@@ -37,6 +41,24 @@
             </intent-filter>
         </activity>
         <receiver android:name=".birthday.BirthdayReceiver" />
+
+        <receiver
+            android:name=".tools.LunarWidgetProvider"
+            android:exported="true"
+            android:label="農曆黃曆小工具">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/lunar_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".carspeed.LocationService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 
 </manifest>
