@@ -1,9 +1,11 @@
-黃曆，吉日，八字，農曆生日，風水羅盤，尺規，車速儀。
+黃曆，吉日查詢，八字，AI算命，AI起名字，農曆生日提醒，風水羅盤，尺規，車速儀。
+
 項目 minSdk 設置為 31 (Android 12)
 支持安卓12系統以上；
-點擊本網頁右邊的Releases打開下載頁面，請選擇最新版本；
-因未發佈到應用市場，部分手機會有風險提示。
+點擊本網頁右邊的Releases打開下載頁面，請選擇最新版本(刪除舊版后安裝)；
 
+因未發佈到應用市場，部分手機會有風險提示。
+僅限於內部測試，禁止商業用途。
 ---
 ## 授權說明 (License & Copyright)
 
@@ -23,9 +25,12 @@ Copyright © 2026 AppPlayForge. All rights reserved.
 - **GitHub Issues**: 提交一個 Issue 說明你的意圖
 
 未經許可的商業轉售、打包銷售或封裝後作為商業軟件發佈將被視為侵權行為。
-<img width="50%" alt="Screenshot_20260318_035019" src="https://github.com/user-attachments/assets/bb214760-bce3-4d88-96af-8ab9b17092f5" />
-<img width="50%" alt="Screenshot_20260318_035041" src="https://github.com/user-attachments/assets/6b8f3dd6-6db6-4a9d-afa7-95ad1a1ef999" />
-<img width="50%" alt="Screenshot_20260318_035110" src="https://github.com/user-attachments/assets/dc046e3a-7977-411a-bacd-d04186d6dab6" />
-<img width="50%" alt="Screenshot_20260318_035132" src="https://github.com/user-attachments/assets/57ff9c4a-039a-4451-bfb5-d3637eba1adc" />
-<img width="50%" alt="Screenshot_20260318_035141" src="https://github.com/user-attachments/assets/24567646-797a-4164-a950-503417df0199" />
-<img width="50%" alt="Screenshot_20260318_035159" src="https://github.com/user-attachments/assets/9c3af8a8-a324-47d5-b83b-c3e736b9a6b5" />
+
+<img width="50%" alt="黃曆" src="https://github.com/user-attachments/assets/1333ae92-c2c7-4a41-ba81-8f97155e36c8" />
+<img width="50%" alt="吉日" src="https://github.com/user-attachments/assets/82dda03a-31d5-43b2-a1cf-72564a6c5d50" />
+<img width="50%" alt="八字" src="https://github.com/user-attachments/assets/6291665c-7a9e-405b-a0ac-0c46c0a5dbbf" />
+<img width="50%" alt="生日" src="https://github.com/user-attachments/assets/24dfa269-789d-40d6-a82a-b09c0478e798" />
+<img width="50%" alt="車速" src="https://github.com/user-attachments/assets/de3d2955-cd19-4ee0-8f66-952193b06e55" />
+<img width="50%" alt="尺規" src="https://github.com/user-attachments/assets/4607662e-9b38-40bf-842d-2d740f5c92e0" />
+<img width="50%" alt="羅盤" src="https://github.com/user-attachments/assets/339be9a4-e5f8-4cd0-9936-e6e3ed3bb7d2" />
+<img width="50%" alt="工具箱" src="https://github.com/user-attachments/assets/5f4d41ff-0743-4c58-a405-dad55a8a47ad" />
