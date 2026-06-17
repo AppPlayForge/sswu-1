@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.CenterFocusStrong
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -250,8 +252,8 @@ fun LuopanScreen(onBack: () -> Unit) {
             ) {
                 ZoomButton(Icons.Default.KeyboardArrowUp, "北", { zoomLevel = 2.5f; panOffset = Offset(0f, 1100f) }, zoomLevel > 1f && panOffset.y > 500f)
                 ZoomButton(Icons.Default.KeyboardArrowDown, "南", { zoomLevel = 2.5f; panOffset = Offset(0f, -1100f) }, zoomLevel > 1f && panOffset.y < -500f)
-                ZoomButton(Icons.Default.KeyboardArrowLeft, "西", { zoomLevel = 2.5f; panOffset = Offset(1100f, 0f) }, zoomLevel > 1f && panOffset.x > 500f)
-                ZoomButton(Icons.Default.KeyboardArrowRight, "東", { zoomLevel = 2.5f; panOffset = Offset(-1100f, 0f) }, zoomLevel > 1f && panOffset.x < -500f)
+                ZoomButton(Icons.AutoMirrored.Filled.KeyboardArrowLeft, "西", { zoomLevel = 2.5f; panOffset = Offset(1100f, 0f) }, zoomLevel > 1f && panOffset.x > 500f)
+                ZoomButton(Icons.AutoMirrored.Filled.KeyboardArrowRight, "東", { zoomLevel = 2.5f; panOffset = Offset(-1100f, 0f) }, zoomLevel > 1f && panOffset.x < -500f)
                 ZoomButton(Icons.Default.ZoomOutMap, "全覽", { zoomLevel = 1f; panOffset = Offset.Zero }, zoomLevel == 1f)
             }
         }

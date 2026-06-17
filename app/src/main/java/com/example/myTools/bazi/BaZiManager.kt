@@ -16,7 +16,7 @@ object BaZiManager {
         val type = object : TypeToken<List<BaZiRecord>>() {}.type
         return try {
             gson.fromJson(json, type) ?: emptyList()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
     }

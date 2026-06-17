@@ -29,8 +29,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.myTools.MainActivity
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 
 // 定義螢幕恆亮的三種狀態
@@ -60,19 +61,19 @@ fun SpeedometerScreen(
     onBack: () -> Unit // << 新增返回回呼
 ) {
     // 從 viewModel 收集數據
-    val speed by viewModel.speed.collectAsState()
-    val gpsSatellites by viewModel.gpsSatellites.collectAsState()
-    val beidouSatellites by viewModel.beidouSatellites.collectAsState()
-    val isRecording by viewModel.isRecording.collectAsState()
-    val tripDuration by viewModel.tripDuration.collectAsState()
-    val maxSpeed by viewModel.maxSpeed.collectAsState()
-    val averageSpeed by viewModel.averageSpeed.collectAsState()
-    val tripDistance by viewModel.tripDistance.collectAsState()
-    val compassDegrees by viewModel.compassDegrees.collectAsState()
-    // val bearingDegrees by viewModel.bearing.collectAsState() // 獲取移動方向 (目前沒用到)
+    val speed by viewModel.speed.collectAsStateWithLifecycle()
+    val gpsSatellites by viewModel.gpsSatellites.collectAsStateWithLifecycle()
+    val beidouSatellites by viewModel.beidouSatellites.collectAsStateWithLifecycle()
+    val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
+    val tripDuration by viewModel.tripDuration.collectAsStateWithLifecycle()
+    val maxSpeed by viewModel.maxSpeed.collectAsStateWithLifecycle()
+    val averageSpeed by viewModel.averageSpeed.collectAsStateWithLifecycle()
+    val tripDistance by viewModel.tripDistance.collectAsStateWithLifecycle()
+    val compassDegrees by viewModel.compassDegrees.collectAsStateWithLifecycle()
+    // val bearingDegrees by viewModel.bearing.collectAsStateWithLifecycle() // 獲取移動方向 (目前沒用到)
 
     // 螢幕恆亮的狀態
-    val wakeLockMode by viewModel.wakeLockMode.collectAsState() // << 從 ViewModel 收集狀態
+    val wakeLockMode by viewModel.wakeLockMode.collectAsStateWithLifecycle() // << 從 ViewModel 收集狀態
     val context = LocalContext.current
 
 
@@ -95,7 +96,7 @@ fun SpeedometerScreen(
 
             WakeLockMode.TEN_MINUTES -> {
                 activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                delay(10 * 60 * 1000L) // 等待 10 分鐘
+                delay((10 * 60 * 1000L).milliseconds) // 等待 10 分鐘
                 // <<< 關鍵修改 2：不要直接修改狀態，而是通知 ViewModel
                 // wakeLockMode = WakeLockMode.OFF // << 刪除或註解掉這一行錯誤的程式碼
                 if (viewModel.wakeLockMode.value == WakeLockMode.TEN_MINUTES) {

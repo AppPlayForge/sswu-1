@@ -12,6 +12,7 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.example.myTools.MainActivity
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -22,10 +23,12 @@ import com.google.android.gms.location.Priority
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import kotlin.time.Duration.Companion.milliseconds
 
 class LocationService : Service() {
 
@@ -33,6 +36,8 @@ class LocationService : Service() {
     private lateinit var locationManager: LocationManager
     private var lastLocation: Location? = null
     private val speedDataPoints = mutableListOf<Float>()
+    
+    private val serviceScope = CoroutineScope(Dispatchers.Default + Job())
     private var durationJob: Job? = null
     private var tripStartTime: Long = 0L
 
@@ -75,6 +80,8 @@ class LocationService : Service() {
                     when (status.getConstellationType(i)) {
                         GnssStatus.CONSTELLATION_GPS -> gpsCount++
                         GnssStatus.CONSTELLATION_BEIDOU -> beidouCount++
+                        // 其他衛星系統 (如 GLONASS, Galileo 等) 暫不統計，在此忽略以消除 Lint 警告
+                        else -> {}
                     }
                 }
             }
@@ -121,10 +128,10 @@ class LocationService : Service() {
         locationManager.registerGnssStatusCallback(mainExecutor, gnssStatusCallback)
 
         // 啟動計時器
-        durationJob = CoroutineScope(Dispatchers.Default).launch {
+        durationJob = serviceScope.launch {
             while (isActive) {
                 LocationData.tripDuration.value = (System.currentTimeMillis() - tripStartTime) / 1000
-                delay(1000)
+                delay(1000.milliseconds)
             }
         }
     }
@@ -134,7 +141,7 @@ class LocationService : Service() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
         locationManager.unregisterGnssStatusCallback(gnssStatusCallback)
         durationJob?.cancel()
-        stopForeground(true)
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
 
@@ -155,6 +162,12 @@ class LocationService : Service() {
             .setSmallIcon(android.R.drawable.ic_menu_mylocation) // 建議換成您自己的 App 圖示
             .setContentIntent(pendingIntent)
             .build()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopRecordingAndService()
+        serviceScope.cancel() // 確保所有協程都停止
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

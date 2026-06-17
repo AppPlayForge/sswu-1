@@ -1,4 +1,4 @@
-package com.example.myTools.settings
+package com.example.myTools.tools
 
 import android.Manifest
 import android.app.AlarmManager
@@ -8,6 +8,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -26,6 +27,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
@@ -46,6 +49,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -156,7 +160,11 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 分組 2：關於與聯繫
-                SettingsGroup(title = "關於與支持", icon = Icons.Default.Support) {
+                SettingsGroup(
+                    title = "關於我們",
+                    icon = Icons.Default.Support,
+                    initialExpanded = false
+                ) {
                     SettingsItem(
                         title = "聯繫作者",
                         subtitle = "sswuss@outlook.com",
@@ -178,7 +186,7 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "關注我們", 
+                            "我們的頻道",
                             modifier = Modifier.weight(1f), 
                             fontSize = 16.sp,
                             color = MaterialTheme.colorScheme.onSurface
@@ -206,7 +214,11 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 分組 3：作者作品
-                SettingsGroup(title = "更多作品", icon = Icons.Default.Code) {
+                SettingsGroup(
+                    title = "關於作品",
+                    icon = Icons.Default.Code,
+                    initialExpanded = false
+                ) {
                     WorkLinkItem(
                         title = "分享App",
                         url = "https://github.com/AppPlayForge/sswu-1.git"
@@ -245,13 +257,20 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-fun SettingsGroup(title: String, icon: ImageVector, content: @Composable ColumnScope.() -> Unit) {
+fun SettingsGroup(
+    title: String,
+    icon: ImageVector,
+    initialExpanded: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(initialExpanded) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .border(
-                0.5.dp, 
-                MaterialTheme.colorScheme.outlineVariant, 
+                0.5.dp,
+                MaterialTheme.colorScheme.outlineVariant,
                 RoundedCornerShape(16.dp)
             ),
         colors = CardDefaults.cardColors(
@@ -261,7 +280,12 @@ fun SettingsGroup(title: String, icon: ImageVector, content: @Composable ColumnS
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { isExpanded = !isExpanded }
+            ) {
                 Icon(
                     icon,
                     contentDescription = null,
@@ -271,17 +295,28 @@ fun SettingsGroup(title: String, icon: ImageVector, content: @Composable ColumnS
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     title,
+                    modifier = Modifier.weight(1f),
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
-            HorizontalDivider(
-                modifier = Modifier.padding(vertical = 12.dp),
-                thickness = 0.5.dp,
-                color = MaterialTheme.colorScheme.outlineVariant
-            )
-            content()
+            AnimatedVisibility(visible = isExpanded) {
+                Column {
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 12.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
+                    content()
+                }
+            }
         }
     }
 }

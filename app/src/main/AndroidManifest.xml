@@ -42,12 +42,16 @@
         </activity>
         <receiver android:name=".birthday.BirthdayReceiver" />
 
+        <!-- 在 LunarWidgetProvider 的 <intent-filter> 中添加了對應的系統廣播動作，確保系統發出時間變更通知時，小工具能夠被正確喚醒並更新。 -->
         <receiver
             android:name=".tools.LunarWidgetProvider"
             android:exported="true"
             android:label="農曆黃曆小工具">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

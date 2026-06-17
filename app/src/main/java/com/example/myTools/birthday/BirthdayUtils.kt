@@ -18,23 +18,14 @@ fun getLunarMonthName(month: Int): String {
  * 獲取農曆日期名稱 (如：初一、廿一、三十)
  */
 fun getLunarDayName(day: Int): String {
-    val chineseTen = arrayOf("初", "十", "廿", "三")
-    val chineseNum = arrayOf("一", "二", "三", "四", "五", "六", "七", "八", "九", "十")
-
-    // Kotlin 的代碼優化建議。
-    // 當 when 表達式中的所有條件都是對同一個變量進行相等性判斷時，
-    // 建議將該變量作為 when 的參數（即 subject），這樣代碼會更簡潔、可讀性更好。
-    return when (day) {
-        10 -> "初十"
-        20 -> "二十"
-        30 -> "三十"
-        else -> {
-            val ten = day / 10
-            val unit = day % 10
-            if (unit == 0) chineseTen[ten] + chineseNum[9]
-            else chineseTen[ten] + chineseNum[unit - 1]
-        }
-    }
+    // 這裡我們直接利用庫的內部邏輯或簡化邏輯，或者直接手動對應
+    // 考慮到庫可能需要一個完整的 Lunar 對象，我們這裡手動映射最常用的名稱
+    val names = arrayOf(
+        "初一", "初二", "初三", "初四", "初五", "初六", "初七", "初八", "初九", "初十",
+        "十一", "十二", "十三", "十四", "十五", "十六", "十七", "十八", "十九", "二十",
+        "廿一", "廿二", "廿三", "廿四", "廿五", "廿六", "廿七", "廿八", "廿九", "三十"
+    )
+    return if (day in 1..30) names[day - 1] else "${day}日"
 }
 
 /**

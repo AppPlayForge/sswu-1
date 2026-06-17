@@ -57,7 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.example.myTools.settings.AppSettingsDialog
+import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.ui.CommonTopBar
 import com.example.myTools.ui.DeleteConfirmDialog
 import com.example.myTools.ui.ThreeDIconButton

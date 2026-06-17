@@ -2,12 +2,17 @@ package com.example.myTools.birthday
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -40,12 +45,24 @@ fun AddBirthdayDialog(
         modifier = Modifier.fillMaxWidth(0.92f),
         title = { Text(if (initialRecord == null) "新增農曆生日" else "修改農曆生日") },
         text = {
+            // 在對話框內容區塊內獲取控制器
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
+
             Column {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
-                    label = { Text("姓名") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("稱呼") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    // 設置鍵盤右下角按鈕為「完成 (Done)」
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = {
+                        // 隱藏鍵盤並清除焦點
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    })
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(

@@ -5,13 +5,33 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.content.ComponentName
 import android.widget.RemoteViews
 import com.example.myTools.MainActivity
 import com.example.myTools.R
 import com.nlf.calendar.Lunar
 import java.util.Date
 
+
+//桌面小部件
 class LunarWidgetProvider : AppWidgetProvider() {
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        val action = intent.action
+        //當接收到這些廣播時，會主動觸發小工具的更新
+        if ((action == Intent.ACTION_TIME_CHANGED) ||  //使其能夠監聽系統的時間變更
+            (action == Intent.ACTION_DATE_CHANGED) ||  //日期變更
+            //時區變更
+            (action == Intent.ACTION_TIMEZONE_CHANGED)) {
+            
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val appWidgetIds = appWidgetManager.getAppWidgetIds(
+                ComponentName(context, LunarWidgetProvider::class.java)
+            )
+            onUpdate(context, appWidgetManager, appWidgetIds)
+        }
+    }
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray) {
         for (appWidgetId in appWidgetIds) {

@@ -21,8 +21,6 @@ class SpeedometerViewModel(application: Application) : AndroidViewModel(applicat
     val averageSpeed = LocationData.averageSpeed  //平均速度
     val tripDistance = LocationData.tripDistance  //行程距離
 
-    val bearing = LocationData.bearing  //將 bearing 暴露給 UI
-
 
     //讓 ViewModel 來負責管理 SensorDataManager(感測器數據管理器) 的生命週期
     private val sensorDataManager = SensorDataManager(application)

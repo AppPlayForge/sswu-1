@@ -33,6 +33,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -63,8 +64,6 @@ fun AddBaZiDialog(
     var city by remember { mutableStateOf(TextFieldValue(initialRecord?.city ?: "")) }
     var isLunar by remember { mutableStateOf(initialRecord?.isLunar ?: false) }
 
-    val focusManager = LocalFocusManager.current
-    
     val focusRequesterSurname = remember { FocusRequester() }
     val focusRequesterGivenName = remember { FocusRequester() }
     val focusRequesterYear = remember { FocusRequester() }
@@ -108,6 +107,10 @@ fun AddBaZiDialog(
             ) 
         },
         text = {
+            // 在對話框內容區塊內獲取控制器，確保能正確控制對話框內的鍵盤行為
+            val focusManager = LocalFocusManager.current
+            val keyboardController = LocalSoftwareKeyboardController.current
+
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -181,6 +184,7 @@ fun AddBaZiDialog(
                             .weight(1.2f)
                             .focusRequester(focusRequesterYear)
                             .onFocusChanged { if (it.isFocused) year = year.copy(selection = TextRange(0, year.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRequesterMonth.requestFocus() }),
@@ -200,6 +204,7 @@ fun AddBaZiDialog(
                             .weight(1.4f)
                             .focusRequester(focusRequesterMonth)
                             .onFocusChanged { if (it.isFocused) month = month.copy(selection = TextRange(0, month.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRequesterDay.requestFocus() }),
@@ -219,6 +224,7 @@ fun AddBaZiDialog(
                             .weight(1.4f)
                             .focusRequester(focusRequesterDay)
                             .onFocusChanged { if (it.isFocused) day = day.copy(selection = TextRange(0, day.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRequesterHour.requestFocus() }),
@@ -231,7 +237,7 @@ fun AddBaZiDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text("出生地點", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
+                Text("出生時分", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -245,6 +251,7 @@ fun AddBaZiDialog(
                             .weight(1f)
                             .focusRequester(focusRequesterHour)
                             .onFocusChanged { if (it.isFocused) hour = hour.copy(selection = TextRange(0, hour.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRequesterMinute.requestFocus() }),
@@ -263,6 +270,7 @@ fun AddBaZiDialog(
                             .weight(1f)
                             .focusRequester(focusRequesterMinute)
                             .onFocusChanged { if (it.isFocused) minute = minute.copy(selection = TextRange(0, minute.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRequesterProvince.requestFocus() }),
@@ -287,6 +295,7 @@ fun AddBaZiDialog(
                             .weight(1f)
                             .focusRequester(focusRequesterProvince)
                             .onFocusChanged { if (it.isFocused) province = province.copy(selection = TextRange(0, province.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                         keyboardActions = KeyboardActions(onNext = { focusRequesterCity.requestFocus() })
@@ -299,9 +308,14 @@ fun AddBaZiDialog(
                             .weight(1f)
                             .focusRequester(focusRequesterCity)
                             .onFocusChanged { if (it.isFocused) city = city.copy(selection = TextRange(0, city.text.length)) },
+                        singleLine = true,
                         textStyle = inputTextStyle,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                        keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() })
+                        keyboardActions = KeyboardActions(onDone = {
+                            // 隱藏鍵盤的標準流程：1. 請求隱藏鍵盤 2. 清除輸入框焦點
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        })
                     )
                 }
             }
@@ -344,11 +358,11 @@ private fun getLunarMonthName(m: Int): String {
 private fun getLunarDayName(d: Int): String {
     val first = listOf("初", "十", "廿", "卅")
     val second = listOf("一", "二", "三", "四", "五", "六", "七", "八", "九", "十")
-    return when {
-        d == 10 -> "初十"
-        d == 20 -> "二十"
-        d == 30 -> "三十"
-        d in 1..30 -> "${first[(d - 1) / 10]}${second[(d - 1) % 10]}"
+    return when (d) {
+        10 -> "初十"
+        20 -> "二十"
+        30 -> "三十"
+        in 1..30 -> "${first[(d - 1) / 10]}${second[(d - 1) % 10]}"
         else -> d.toString()
     }
 }
