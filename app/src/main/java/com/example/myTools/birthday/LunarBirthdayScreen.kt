@@ -215,14 +215,15 @@ fun LunarBirthdayScreen() {
                         showAddDialog = false
                         editingRecord = null
                     },
-                    onConfirm = { name, month, day, reminds, hours ->
+                    onConfirm = { name, month, day, reminds, hour, minute ->
                         val record = if (editingRecord != null) {
                             editingRecord!!.copy(
                                 name = name,
                                 lunarMonth = month,
                                 lunarDay = day,
                                 remindList = reminds,
-                                remindHours = hours
+                                remindHour = hour,
+                                remindMinute = minute
                             )
                         } else {
                             BirthdayRecord(
@@ -230,7 +231,8 @@ fun LunarBirthdayScreen() {
                                 lunarMonth = month,
                                 lunarDay = day,
                                 remindList = reminds,
-                                remindHours = hours
+                                remindHour = hour,
+                                remindMinute = minute
                             )
                         }
 

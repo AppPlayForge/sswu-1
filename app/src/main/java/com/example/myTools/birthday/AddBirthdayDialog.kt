@@ -2,6 +2,7 @@ package com.example.myTools.birthday
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -15,14 +16,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddBirthdayDialog(
     initialRecord: BirthdayRecord? = null,
     onDismiss: () -> Unit,
-    onConfirm: (String, Int, Int, List<Int>, List<Int>) -> Unit
+    onConfirm: (String, Int, Int, List<Int>, Int, Int) -> Unit
 ) {
     var name by remember { mutableStateOf(initialRecord?.name ?: "") }
     var selectedMonth by remember { mutableIntStateOf(initialRecord?.lunarMonth ?: 1) }
@@ -31,11 +34,18 @@ fun AddBirthdayDialog(
     var dayExpanded by remember { mutableStateOf(false) }
 
     val selectedRemindDays = remember {
-        mutableStateListOf<Int>().apply { addAll(initialRecord?.remindList ?: listOf(1)) }
+        mutableStateListOf<Int>().apply { 
+            if (initialRecord != null) {
+                addAll(initialRecord.remindList)
+            } else {
+                add(0) // 默認當天
+            }
+        }
     }
-    val selectedRemindHours = remember {
-        mutableStateListOf<Int>().apply { addAll(initialRecord?.remindHours ?: listOf(9)) }
-    }
+    
+    var remindHour by remember { mutableIntStateOf(initialRecord?.remindHour ?: 9) }
+    var remindMinute by remember { mutableIntStateOf(initialRecord?.remindMinute ?: 0) }
+    var showTimePicker by remember { mutableStateOf(false) }
 
     var errorText by remember { mutableStateOf("") }
 
@@ -45,7 +55,6 @@ fun AddBirthdayDialog(
         modifier = Modifier.fillMaxWidth(0.92f),
         title = { Text(if (initialRecord == null) "新增農曆生日" else "修改農曆生日") },
         text = {
-            // 在對話框內容區塊內獲取控制器
             val focusManager = LocalFocusManager.current
             val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -56,10 +65,8 @@ fun AddBirthdayDialog(
                     label = { Text("稱呼") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    // 設置鍵盤右下角按鈕為「完成 (Done)」
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = {
-                        // 隱藏鍵盤並清除焦點
                         keyboardController?.hide()
                         focusManager.clearFocus()
                     })
@@ -90,11 +97,7 @@ fun AddBirthdayDialog(
                             onDismissRequest = { monthExpanded = false }) {
                             (1..12).forEach { m ->
                                 DropdownMenuItem(text = {
-                                    Text(
-                                        getLunarMonthName(
-                                            m
-                                        )
-                                    )
+                                    Text(getLunarMonthName(m))
                                 }, onClick = { selectedMonth = m; monthExpanded = false })
                             }
                         }
@@ -127,33 +130,30 @@ fun AddBirthdayDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(20.dp))
-                Text("提醒時間 (可多選)：", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                val timeOptions = remember { listOf(9 to "上午9點", 14 to "下午2點", 19 to "晚上7點") }
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    timeOptions.forEach { (hour, label) ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .weight(1f)
-                                .clickable {
-                                    if (selectedRemindHours.contains(hour)) selectedRemindHours.remove(
-                                        hour
-                                    ) else selectedRemindHours.add(hour)
-                                }) {
-                            Checkbox(
-                                checked = selectedRemindHours.contains(hour),
-                                onCheckedChange = {
-                                    if (it) selectedRemindHours.add(hour) else selectedRemindHours.remove(
-                                        hour
-                                    )
-                                })
-                            Text(label, fontSize = 13.sp)
-                        }
+                
+                Text("提醒時間：", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                OutlinedCard(
+                    onClick = { showTimePicker = true },
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = String.format(Locale.getDefault(), "%02d:%02d", remindHour, remindMinute),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("(點擊修改)", fontSize = 12.sp, color = Color.Gray)
                     }
                 }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 Text("提醒日期 (可多選)：", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                val dayOptions = remember { listOf(0 to "當天", 1 to "1天前", 3 to "3天前", 7 to "7天前") }
+                val dayOptions = remember { listOf(0 to "當天", 1 to "1天前", 2 to "2天前", 3 to "3天前") }
                 Column {
                     dayOptions.chunked(2).forEach { row ->
                         Row(modifier = Modifier.fillMaxWidth()) {
@@ -163,16 +163,20 @@ fun AddBirthdayDialog(
                                     modifier = Modifier
                                         .weight(1f)
                                         .clickable {
-                                            if (selectedRemindDays.contains(days)) selectedRemindDays.remove(
-                                                days
-                                            ) else selectedRemindDays.add(days)
+                                            if (selectedRemindDays.contains(days)) {
+                                                if (selectedRemindDays.size > 1) selectedRemindDays.remove(days)
+                                            } else {
+                                                selectedRemindDays.add(days)
+                                            }
                                         }) {
                                     Checkbox(
                                         checked = selectedRemindDays.contains(days),
                                         onCheckedChange = {
-                                            if (it) selectedRemindDays.add(days) else selectedRemindDays.remove(
-                                                days
-                                            )
+                                            if (it) {
+                                                selectedRemindDays.add(days)
+                                            } else {
+                                                if (selectedRemindDays.size > 1) selectedRemindDays.remove(days)
+                                            }
                                         })
                                     Text(label, fontSize = 14.sp)
                                 }
@@ -190,15 +194,56 @@ fun AddBirthdayDialog(
         },
         confirmButton = {
             Button(onClick = {
-                if (name.isBlank()) errorText = "請輸入姓名" else onConfirm(
+                if (name.isBlank()) errorText = "請輸入稱呼"
+                else if (selectedRemindDays.isEmpty()) errorText = "請至少選擇一個提醒日期"
+                else onConfirm(
                     name,
                     selectedMonth,
                     selectedDay,
                     selectedRemindDays.toList(),
-                    selectedRemindHours.toList()
+                    remindHour,
+                    remindMinute
                 )
             }) { Text(if (initialRecord == null) "確定" else "保存") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
     )
+
+    if (showTimePicker) {
+        val timePickerState = rememberTimePickerState(
+            initialHour = remindHour,
+            initialMinute = remindMinute
+        )
+        
+        Dialog(onDismissRequest = { showTimePicker = false }) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "選擇提醒時間",
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 20.dp),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    TimePicker(state = timePickerState)
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showTimePicker = false }) { Text("取消") }
+                        TextButton(onClick = {
+                            remindHour = timePickerState.hour
+                            remindMinute = timePickerState.minute
+                            showTimePicker = false
+                        }) { Text("確定") }
+                    }
+                }
+            }
+        }
+    }
 }

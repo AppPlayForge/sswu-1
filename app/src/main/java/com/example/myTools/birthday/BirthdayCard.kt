@@ -108,11 +108,7 @@ fun BirthdayCard(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
-                        val timeStr = record.remindHours.sorted().joinToString(", ") { h ->
-                            when (h) {
-                                9 -> "上午9點"; 14 -> "下午2點"; 19 -> "晚上7點"; else -> "$h:00"
-                            }
-                        }
+                        val timeStr = String.format(Locale.getDefault(), "%02d:%02d", record.remindHour, record.remindMinute)
                         Text(
                             " $timeStr",
                             fontSize = 16.sp,

@@ -21,7 +21,7 @@ object BirthdayManager {
         val type = object : TypeToken<List<BirthdayRecord>>() {}.type
         return try {
             val rawList: List<BirthdayRecord>? = gson.fromJson(json, type)
-            rawList?.map { it.copy() } ?: emptyList()
+            rawList ?: emptyList()
         } catch (e: Exception) { emptyList() }
     }
 
@@ -35,8 +35,9 @@ object BirthdayManager {
         val list = loadList(context).toMutableList()
         val index = list.indexOfFirst { it.id == record.id }
         
-        // 如果是編輯，先取消舊的鬧鐘（基於 ID 的所有組合）
-        cancelAlarm(context, record)
+        // 如果是編輯，先取消舊的鬧鐘（注意：這裡取消邏輯可能需要兼容舊版）
+        // 由於我們更改了數據結構，最穩妥的方法是取消所有可能的舊鬧鐘組合
+        cancelOldAlarms(context, record.id)
         
         if (index != -1) {
             list[index] = record
@@ -63,40 +64,45 @@ object BirthdayManager {
     fun scheduleBirthdayAlarm(context: Context, record: BirthdayRecord) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         record.remindList.forEach { daysBefore ->
-            record.remindHours.forEach { hour ->
-                val nextBirthdayCal = getNextBirthdayCalendar(record.lunarMonth, record.lunarDay)
-                val reminderCal = nextBirthdayCal.clone() as Calendar
-                reminderCal.add(Calendar.DAY_OF_YEAR, -daysBefore)
-                reminderCal.set(Calendar.HOUR_OF_DAY, hour)
-                reminderCal.set(Calendar.MINUTE, 0); reminderCal.set(Calendar.SECOND, 0)
-                if (reminderCal.timeInMillis < System.currentTimeMillis()) return@forEach
-                
-                val msg = when (daysBefore) {
-                    0 -> "今天是 ${record.name} 的農曆生日！"
-                    1 -> "明天是 ${record.name} 的農曆生日"
-                    else -> "${record.name} 的農曆生日還有 $daysBefore 天"
-                }
-                
-                val uniqueRequestCode = (record.id % 100000).toInt() + (daysBefore * 100000) + (hour * 100)
-                
-                val intent = Intent(context, BirthdayReceiver::class.java).apply {
-                    putExtra("name", record.name)
-                    putExtra("message", msg)
-                    putExtra("id", uniqueRequestCode)
-                }
-                
-                val pendingIntent = PendingIntent.getBroadcast(
-                    context, 
-                    uniqueRequestCode, 
-                    intent, 
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                
-                if (alarmManager.canScheduleExactAlarms()) {
-                    alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
-                } else {
-                    alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
-                }
+            val nextBirthdayCal = getNextBirthdayCalendar(record.lunarMonth, record.lunarDay)
+            val reminderCal = nextBirthdayCal.clone() as Calendar
+            reminderCal.add(Calendar.DAY_OF_YEAR, -daysBefore)
+            reminderCal.set(Calendar.HOUR_OF_DAY, record.remindHour)
+            reminderCal.set(Calendar.MINUTE, record.remindMinute)
+            reminderCal.set(Calendar.SECOND, 0)
+            reminderCal.set(Calendar.MILLISECOND, 0)
+
+            if (reminderCal.timeInMillis < System.currentTimeMillis()) {
+                // 如果今年的提醒時間已過，則不設置（或者可以考慮設置明年的，但通常明年會重新觸發）
+                return@forEach
+            }
+            
+            val msg = when (daysBefore) {
+                0 -> "今天是 ${record.name} 的農曆生日！"
+                1 -> "明天是 ${record.name} 的農曆生日"
+                else -> "${record.name} 的農曆生日還有 $daysBefore 天"
+            }
+            
+            // 唯一請求碼：ID後5位 + 天數*100000 + 小時*100 + 分鐘
+            val uniqueRequestCode = (record.id % 100000).toInt() + (daysBefore * 100000)
+            
+            val intent = Intent(context, BirthdayReceiver::class.java).apply {
+                putExtra("name", record.name)
+                putExtra("message", msg)
+                putExtra("id", uniqueRequestCode)
+            }
+            
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, 
+                uniqueRequestCode, 
+                intent, 
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            if (alarmManager.canScheduleExactAlarms()) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
+            } else {
+                alarmManager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminderCal.timeInMillis, pendingIntent)
             }
         }
     }
@@ -105,13 +111,31 @@ object BirthdayManager {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         val intent = Intent(context, BirthdayReceiver::class.java)
         
-        // 優化：僅遍歷 UI 中允許的提醒組合進行取消，減少不必要的循環
+        // 取消當前記錄關聯的所有提醒天數的鬧鐘
+        // 注意：我們之前的 uniqueRequestCode 邏輯發生了變化，這裡儘量覆蓋
+        record.remindList.forEach { daysBefore ->
+            val uniqueRequestCode = (record.id % 100000).toInt() + (daysBefore * 100000)
+            val pendingIntent = PendingIntent.getBroadcast(
+                context, 
+                uniqueRequestCode, 
+                intent, 
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            alarmManager.cancel(pendingIntent)
+        }
+        // 同時嘗試取消可能存在的舊版鬧鐘組合
+        cancelOldAlarms(context, record.id)
+    }
+
+    private fun cancelOldAlarms(context: Context, recordId: Long) {
+        val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+        val intent = Intent(context, BirthdayReceiver::class.java)
         val allPossibleDays = listOf(0, 1, 3, 7)
         val allPossibleHours = listOf(9, 14, 19)
         
         allPossibleDays.forEach { d ->
             allPossibleHours.forEach { h ->
-                val uniqueRequestCode = (record.id % 100000).toInt() + (d * 100000) + (h * 100)
+                val uniqueRequestCode = (recordId % 100000).toInt() + (d * 100000) + (h * 100)
                 val pendingIntent = PendingIntent.getBroadcast(
                     context, 
                     uniqueRequestCode, 
@@ -121,10 +145,5 @@ object BirthdayManager {
                 alarmManager.cancel(pendingIntent)
             }
         }
-    }
-
-    private fun rescheduleAllAlarms(context: Context, list: List<BirthdayRecord>) {
-        list.forEach { cancelAlarm(context, it) }
-        list.forEach { scheduleBirthdayAlarm(context, it) }
     }
 }
