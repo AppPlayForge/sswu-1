@@ -4,8 +4,10 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,16 +26,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,20 +45,25 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.example.myTools.MainActivity
 import com.example.myTools.tools.AppSettingsDialog
+import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.CommonTopBar
 import com.example.myTools.ui.DeleteConfirmDialog
 import com.example.myTools.ui.ThreeDIconButton
@@ -66,6 +72,7 @@ import com.nlf.calendar.Lunar
 import com.nlf.calendar.Solar
 import java.util.Locale
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BaZiScreen() {
     val context = LocalContext.current
@@ -76,38 +83,68 @@ fun BaZiScreen() {
     var recordToDelete by remember { mutableStateOf<BaZiRecord?>(null) }
     var selectedRecord by remember { mutableStateOf<BaZiRecord?>(null) }
 
+    val isAnyDialogOpen = showAddDialog || showSettingsDialog || recordToEdit != null || recordToDelete != null || selectedRecord != null
+
+    LaunchedEffect(isAnyDialogOpen) {
+        MainActivity.setAppBlurred(isAnyDialogOpen)
+    }
+
     Scaffold(
         containerColor = Color.Transparent, // 讓底色透出來
         topBar = {
-            CommonTopBar(
-                title = "八字命盤",
-                onSettingsClick = { showSettingsDialog = true }
-            )
+            BlurryContainer(isBlur = isAnyDialogOpen) {
+                CommonTopBar(
+                    title = "八字命盤",
+                    onSettingsClick = { showSettingsDialog = true }
+                )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "添加八字")
+            BlurryContainer(isBlur = isAnyDialogOpen) {
+                Surface(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .combinedClickable(
+                            onClick = { showAddDialog = true }
+                        ),
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = "添加八字",
+                            modifier = Modifier.size(36.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
-            if (records.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("暫無紀錄，請點擊右下角按鈕添加", color = Color.Gray)
-                }
-            } else {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    items(records) { record ->
-                        BaZiRecordItem(
-                            record = record,
-                            onClick = { selectedRecord = record },
-                            onEdit = { recordToEdit = record },
-                            onDelete = { recordToDelete = record }
-                        )
+        BlurryContainer(
+            isBlur = isAnyDialogOpen,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (records.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("暫無紀錄，請點擊右下角按鈕添加", color = Color.Gray)
+                    }
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(records) { record ->
+                            BaZiRecordItem(
+                                record = record,
+                                onClick = { selectedRecord = record },
+                                onEdit = { recordToEdit = record },
+                                onDelete = { recordToDelete = record }
+                            )
+                        }
                     }
                 }
             }

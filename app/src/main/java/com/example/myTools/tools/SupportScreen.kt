@@ -105,7 +105,7 @@ fun SupportSection(context: Context) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // 微信部分
-        Row(
+/*        Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clickable { wechatExpanded = !wechatExpanded }
@@ -126,7 +126,9 @@ fun SupportSection(context: Context) {
                 modifier = Modifier.rotate(wechatRotation)
             )
         }
+        */
 
+/*
         AnimatedVisibility(visible = wechatExpanded) {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -148,6 +150,7 @@ fun SupportSection(context: Context) {
             thickness = 0.5.dp,
             color = Color.Gray.copy(alpha = 0.3f)
         )
+*/
 
         // 加密貨幣部分
         Row(

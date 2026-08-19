@@ -11,22 +11,29 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import com.example.myTools.MainActivity
+import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.DeleteConfirmDialog
 
 
@@ -43,7 +50,7 @@ import com.example.myTools.ui.DeleteConfirmDialog
 /**
  * 農曆生日提醒主頁面
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun LunarBirthdayScreen() {
     val context = LocalContext.current
@@ -85,88 +92,121 @@ fun LunarBirthdayScreen() {
         }
     }
 
+    val isAnyDialogOpen = showPermissionGuide || showAddDialog || editingRecord != null || recordToDelete != null
+
+    LaunchedEffect(isAnyDialogOpen) {
+        MainActivity.setAppBlurred(isAnyDialogOpen)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            MainActivity.setAppBlurred(false)
+        }
+    }
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("農曆生日提醒", fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = {
-                        // 檢查通知權限 (Android 13+)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            when (ContextCompat.checkSelfPermission(
-                                context,
-                                Manifest.permission.POST_NOTIFICATIONS
-                            )) {
-                                PackageManager.PERMISSION_GRANTED -> {
-                                    sendTestNotification(context)
-                                }
+            BlurryContainer(isBlur = isAnyDialogOpen) {
+                CenterAlignedTopAppBar(
+                    title = { Text("農曆生日提醒", fontWeight = FontWeight.Bold) },
+                    actions = {
+                        IconButton(onClick = {
+                            // 檢查通知權限 (Android 13+)
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                when (ContextCompat.checkSelfPermission(
+                                    context,
+                                    Manifest.permission.POST_NOTIFICATIONS
+                                )) {
+                                    PackageManager.PERMISSION_GRANTED -> {
+                                        sendTestNotification(context)
+                                    }
 
-                                else -> {
-                                    // 彈出權限申請
-                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    else -> {
+                                        // 彈出權限申請
+                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
                                 }
+                            } else {
+                                // Android 13 以下版本通常預設開啟或由系統管理
+                                sendTestNotification(context)
                             }
-                        } else {
-                            // Android 13 以下版本通常預設開啟或由系統管理
-                            sendTestNotification(context)
+                        }) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = "測試通知",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = "測試通知",
-                            tint = Color(0xFFFF5722)
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
-            )
+            }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = {
-                    editingRecord = null
-                    showAddDialog = true
-                },
-                containerColor = Color(0xFFFF5722),
-                contentColor = Color.White
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "新增")
+            BlurryContainer(isBlur = isAnyDialogOpen) {
+                Surface(
+                    modifier = Modifier
+                        .size(96.dp)
+                        .combinedClickable(
+                            onClick = {
+                                editingRecord = null
+                                showAddDialog = true
+                            }
+                        ),
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 8.dp
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = "新增",
+                            modifier = Modifier.size(36.dp),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                }
             }
         },
         containerColor = Color.Transparent
     ) { innerPadding ->
-        Box(
+        BlurryContainer(
+            isBlur = isAnyDialogOpen,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            if (birthdayList.isEmpty()) {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text("尚未添加生日紀錄", color = Color.Gray, fontSize = 18.sp)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    items(birthdayList, key = { it.id }) { record ->
-                        BirthdayCard(
-                            record = record,
-                            onEdit = { editingRecord = record },
-                            onDeleteRequest = { recordToDelete = record }
-                        )
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (birthdayList.isEmpty()) {
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text("尚未添加生日紀錄", color = Color.Gray, fontSize = 18.sp)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(birthdayList, key = { it.id }) { record ->
+                            BirthdayCard(
+                                record = record,
+                                onEdit = { editingRecord = record },
+                                onDeleteRequest = { recordToDelete = record }
+                            )
+                        }
                     }
                 }
             }
+        }
 
-            // 權限引導對話框
+        // 權限引導對話框
             if (showPermissionGuide) {
                 AlertDialog(
                     onDismissRequest = { showPermissionGuide = false },
@@ -257,7 +297,6 @@ fun LunarBirthdayScreen() {
                     }
                 )
             }
-        }
     }
 }
 

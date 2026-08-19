@@ -1,5 +1,5 @@
 [versions]
-agp = "9.2.1"
+agp = "9.3.1"
 gson = "2.14.0"
 kotlin = "2.3.10"
 coreKtx = "1.18.0"
@@ -14,8 +14,10 @@ materialIconsExtended = "1.7.8"
 foundationLayout = "1.10.5"
 foundation = "1.10.5"
 playServicesLocation = "21.3.0"
+navigationCompose = "2.9.8"
 
 [libraries]
+androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "materialIconsExtended" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }

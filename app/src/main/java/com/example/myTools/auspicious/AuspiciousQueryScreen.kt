@@ -42,6 +42,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +55,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.myTools.MainActivity
+import com.example.myTools.ui.BlurryContainer
 import com.nlf.calendar.Lunar
 import java.util.Calendar
 
@@ -76,6 +79,11 @@ fun AuspiciousQueryScreen() {
         findAuspiciousDays(selectedYear, selectedMonth, selectedCategory)
     }
 
+    val isInternalBlur = showDatePickerDialog || selectedDayDetail != null
+    LaunchedEffect(isInternalBlur) {
+        MainActivity.setAppBlurred(isInternalBlur)
+    }
+
     val categories = listOf(
         "嫁娶", "開市", "入宅", "移徙", "動土",
         "出行", "祈福", "祭祀", "安床", "裁衣",
@@ -83,103 +91,123 @@ fun AuspiciousQueryScreen() {
         "治病", "拆卸", "修造", "上樑", "破土"
     )
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(horizontal = 16.dp)
-    ) {
-        // 2. 年月選擇器
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(2.dp),
-            modifier = Modifier.fillMaxWidth()
+    BlurryContainer(isBlur = isInternalBlur, modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(horizontal = 16.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp), // 稍微縮小內邊距
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // 2. 年月選擇器
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(2.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // 上個月
-                IconButton(onClick = {
-                    if (selectedMonth == 1) { selectedMonth = 12; selectedYear-- } else { selectedMonth-- }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.Gray)
-                }
-
-                // 點擊文字彈出對話框
                 Row(
                     modifier = Modifier
-                        .clickable { showDatePickerDialog = true } // 點擊觸發
-                        .padding(8.dp),
+                        .fillMaxWidth()
+                        .padding(8.dp), // 稍微縮小內邊距
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.CalendarMonth, null, tint = Color(0xFFB71C1C), modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "$selectedYear 年 $selectedMonth 月",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB71C1C)
-                    )
-                }
+                    // 上個月
+                    IconButton(onClick = {
+                        if (selectedMonth == 1) {
+                            selectedMonth = 12; selectedYear--
+                        } else {
+                            selectedMonth--
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.Gray)
+                    }
 
-                // 下個月 (微調)
-                IconButton(onClick = {
-                    if (selectedMonth == 12) { selectedMonth = 1; selectedYear++ } else { selectedMonth++ }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.Gray)
+                    // 點擊文字彈出對話框
+                    Row(
+                        modifier = Modifier
+                            .clickable { showDatePickerDialog = true } // 點擊觸發
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.CalendarMonth,
+                            null,
+                            tint = Color(0xFFB71C1C),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "$selectedYear 年 $selectedMonth 月",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFB71C1C)
+                        )
+                    }
+
+                    // 下個月 (微調)
+                    IconButton(onClick = {
+                        if (selectedMonth == 12) {
+                            selectedMonth = 1; selectedYear++
+                        } else {
+                            selectedMonth++
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, null, tint = Color.Gray)
+                    }
                 }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // 3. 類別選擇 (LazyHorizontalGrid 雙排顯示)
-        Text("選擇事項：", fontSize = 16.sp, color = Color.Gray, modifier = Modifier.padding(bottom = 8.dp))
+            // 3. 類別選擇 (LazyHorizontalGrid 雙排顯示)
+            Text(
+                "選擇事項：",
+                fontSize = 16.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-        LazyHorizontalGrid(
-            rows = GridCells.Fixed(2), // 固定 2 行
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(100.dp), // 給定一個固定高度，大約足夠放兩排 Chip
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(categories) { category ->
-                val isSelected = category == selectedCategory
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { selectedCategory = category },
-                    label = { Text(category) },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = Color(0xFFB71C1C),
-                        selectedLabelColor = Color.White,
-                        containerColor = MaterialTheme.colorScheme.surface
+            LazyHorizontalGrid(
+                rows = GridCells.Fixed(2), // 固定 2 行
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp), // 給定一個固定高度，大約足夠放兩排 Chip
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categories) { category ->
+                    val isSelected = category == selectedCategory
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { selectedCategory = category },
+                        label = { Text(category) },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Color(0xFFB71C1C),
+                            selectedLabelColor = Color.White,
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     )
-                )
+                }
             }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-        // 4. 結果列表
-        Text(
-            text = "本月共有 ${auspiciousDays.size} 個吉日",
-            fontSize = 16.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
+            // 4. 結果列表
+            Text(
+                text = "本月共有 ${auspiciousDays.size} 個吉日",
+                fontSize = 16.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 16.dp)
-        ) {
-            items(auspiciousDays) { lunar ->
-                AuspiciousDayCard(lunar, onClick = { selectedDayDetail = lunar })
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                items(auspiciousDays) { lunar ->
+                    AuspiciousDayCard(lunar, onClick = { selectedDayDetail = lunar })
+                }
             }
         }
     }

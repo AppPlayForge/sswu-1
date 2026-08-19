@@ -8,41 +8,17 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Explore
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Straighten
-import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -52,9 +28,12 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import com.example.myTools.MainActivity
 import com.example.myTools.caliper.CaliperScreen
 import com.example.myTools.carspeed.CarSpeedScreen
 import com.example.myTools.luopan.LuopanScreen
+import com.example.myTools.ui.BlurryContainer
+import com.example.myTools.ui.theme.AppThemeScheme
 
 sealed class Tool(val title: String, val icon: ImageVector) {
     object Luopan : Tool("羅盤", Icons.Default.Explore)
@@ -70,78 +49,95 @@ sealed class Tool(val title: String, val icon: ImageVector) {
 fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
     var selectedTool by rememberSaveable { mutableStateOf<String?>(null) }
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
+    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val view = LocalView.current
 
     // 動態調整系統狀態列圖示顏色
     LaunchedEffect(selectedTool) {
-        // 當進入羅盤頁面、車速頁面或尺規頁面（全屏工具）時，隱藏底部導航欄
         onToggleBottomBar(selectedTool != Tool.Luopan.title && selectedTool != Tool.CarSpeed.title && selectedTool != Tool.Caliper.title)
-
         val window = (context as? Activity)?.window ?: return@LaunchedEffect
         val insetsController = WindowCompat.getInsetsController(window, view)
-        // 當進入特定工具頁面（深色背景或全屏）時，調整狀態列圖示
         insetsController.isAppearanceLightStatusBars =
             (selectedTool != Tool.Luopan.title && selectedTool != Tool.CarSpeed.title && selectedTool != Tool.Caliper.title)
+    }
+
+    val isAnyDialogOpen = showSettingsDialog || showThemeDialog
+
+    LaunchedEffect(isAnyDialogOpen) {
+        MainActivity.setAppBlurred(isAnyDialogOpen)
     }
 
     if (showSettingsDialog) {
         AppSettingsDialog(onDismiss = { showSettingsDialog = false })
     }
+    
+    if (showThemeDialog) {
+        ThemeSettingsDialog(onDismiss = { showThemeDialog = false })
+    }
 
-    // 處理返回鍵，如果正在使用工具，按返回鍵回到菜單
     BackHandler(enabled = selectedTool != null) {
         selectedTool = null
     }
 
     if (selectedTool == null) {
-        // 工具選擇菜單
         Scaffold(
             topBar = {
-                TopAppBar(
-                    title = { 
-                        Text(
-                            "工具箱", 
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold 
-                        ) 
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
+                BlurryContainer(isBlur = isAnyDialogOpen) {
+                    TopAppBar(
+                        title = { 
+                            Text(
+                                "工具箱", 
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold 
+                            ) 
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
                     )
-                )
+                }
             },
             containerColor = Color.Transparent
         ) { innerPadding ->
-            val tools = listOf(
-                Tool.Luopan,
-                Tool.Caliper,
-                Tool.CarSpeed,
-                Tool.Widget,
-                Tool.Settings,
-                Tool.Support
-            )
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3), // 3列佈局
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+            BlurryContainer(
+                isBlur = isAnyDialogOpen,
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
-                items(tools) { tool ->
-                    ToolItem(tool = tool) {
-                        when (tool) {
-                            is Tool.Widget -> requestPinWidget(context)
-                            is Tool.Settings -> showSettingsDialog = true
-                            else -> selectedTool = tool.title
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // 主題設置入口
+                    ThemeEntrySection(onClick = { showThemeDialog = true })
+                    
+                    val tools = listOf(
+                        Tool.Luopan,
+                        Tool.Caliper,
+                        Tool.CarSpeed,
+                        Tool.Widget,
+                        Tool.Settings,
+                        Tool.Support
+                    )
+
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(3),
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        items(tools) { tool ->
+                            ToolItem(tool = tool) {
+                                when (tool) {
+                                    is Tool.Widget -> requestPinWidget(context)
+                                    is Tool.Settings -> showSettingsDialog = true
+                                    else -> selectedTool = tool.title
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     } else {
-        // 具體的工具頁面
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
             when (selectedTool) {
                 Tool.Luopan.title -> LuopanScreen(onBack = { selectedTool = null })
@@ -154,12 +150,72 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
 }
 
 @Composable
+fun ThemeEntrySection(onClick: () -> Unit) {
+    val currentTheme by MainActivity.themeScheme.collectAsState()
+    
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .clickable { onClick() },
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Palette, 
+                contentDescription = null, 
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "個性化主題", 
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "當前配色: ${getThemeLabel(currentTheme)}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+private fun getThemeLabel(scheme: AppThemeScheme): String {
+    return when(scheme) {
+        AppThemeScheme.DYNAMIC -> "依照系統"
+        AppThemeScheme.OCEAN -> "海洋藍"
+        AppThemeScheme.PRAIRIE -> "草原綠"
+        AppThemeScheme.ORANGE -> "活力橙"
+        AppThemeScheme.PINK -> "浪漫粉"
+        AppThemeScheme.PURPLE -> "優雅紫"
+        AppThemeScheme.MONOCHROME -> "極致黑灰"
+        AppThemeScheme.EARTH -> "大地紅"
+        AppThemeScheme.BLUE -> "經典藍"
+    }
+}
+
+@Composable
 fun ToolItem(tool: Tool, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp), // M3 標準中型容器圓角
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp, // 增加 M3 特有的色調層次感
+        tonalElevation = 1.dp,
         modifier = Modifier
             .aspectRatio(1f)
             .border(
@@ -177,12 +233,12 @@ fun ToolItem(tool: Tool, onClick: () -> Unit) {
                 imageVector = tool.icon,
                 contentDescription = tool.title,
                 modifier = Modifier.size(32.dp),
-                tint = MaterialTheme.colorScheme.primary // 統一使用主色，保持專業感
+                tint = MaterialTheme.colorScheme.primary
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = tool.title,
-                style = MaterialTheme.typography.labelLarge, // 使用 M3 標準標籤字體
+                style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1
@@ -196,8 +252,6 @@ private fun requestPinWidget(context: Context) {
     val myProvider = ComponentName(context, LunarWidgetProvider::class.java)
 
     if (appWidgetManager.isRequestPinAppWidgetSupported) {
-        // 彈出系統請求添加小部件對話框（即截圖中的界面）
-        // 用戶點擊「新增至主畫面」後，系統會自動在桌面尋找空位添加
         appWidgetManager.requestPinAppWidget(myProvider, null, null)
     } else {
         Toast.makeText(context, "您的手機啟動器不支持自動添加小工具，請手動長按桌面添加", Toast.LENGTH_LONG).show()

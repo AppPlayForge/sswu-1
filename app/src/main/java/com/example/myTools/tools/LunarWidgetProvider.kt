@@ -136,23 +136,16 @@ class LunarWidgetProvider : AppWidgetProvider() {
     private fun updateAppWidget(context: Context, appWidgetManager: AppWidgetManager, appWidgetId: Int) {
         val views = RemoteViews(context.packageName, R.layout.lunar_widget)
 
-        // 獲取當前農曆信息
-        val lunar = Lunar.fromDate(Date())
-        val lunarDateStr = "${lunar.monthInChinese}月${lunar.dayInChinese}"
+        // 使用統一的 LunarManager 獲取數據
+        val info = com.example.myTools.utils.LunarManager.getTodayLunarInfo()
         
-        // 獲取節氣
-        val prevJieQi = lunar.getPrevJieQi(false)
-        
-        // 顯示當前的節氣名稱
-        val solarTermStr = "節氣：${prevJieQi.name}"
-
-        views.setTextViewText(R.id.tv_lunar_date, lunarDateStr)
-        views.setTextViewText(R.id.tv_solar_term, solarTermStr)
+        views.setTextViewText(R.id.tv_lunar_date, info.lunarDate)
+        views.setTextViewText(R.id.tv_solar_term, "節氣：${info.solarTerm}")
 
         // 點擊事件：進入 app 的黃曆頁面
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("target_page", 0) // 0 是黃曆頁面
+            putExtra("target_page", 0) 
         }
         val pendingIntent = PendingIntent.getActivity(
             context, 0, intent,

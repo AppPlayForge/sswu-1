@@ -4,7 +4,7 @@
     android:previewLayout="@layout/lunar_widget"
     android:minWidth="110dp"
     android:minHeight="60dp"
-    android:updatePeriodMillis="86400000"
+    android:updatePeriodMillis="3600000"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:previewImage="@drawable/ic_launcher_foreground">
