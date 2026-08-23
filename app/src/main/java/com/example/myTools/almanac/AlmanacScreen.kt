@@ -1,6 +1,7 @@
 package com.example.myTools.almanac
 
 import android.view.HapticFeedbackConstants
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,29 +33,19 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.outlined.Eco
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
@@ -65,6 +57,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.MainActivity
 import com.example.myTools.auspicious.AuspiciousQueryScreen
 import com.example.myTools.tools.AppSettingsDialog
+import com.example.myTools.tools.SupportScreen
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.CommonTopBar
 import com.nlf.calendar.Lunar
@@ -74,16 +67,15 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.ceil
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AlmanacScreen(modifier: Modifier = Modifier) {
     val today = remember { Date() }
     val lunar = remember { Lunar.fromDate(today) }
 
-    // 使用 remember 快取計算結果，避免每次重組都重新計算
-    // 改為包含當天的判斷邏輯：如果今天就是節氣，則獲取當天節氣；否則獲取最近的上一個節氣
     val currentJieQiObj = remember(lunar) { lunar.getPrevJieQi(true) }
     val currentTermName = remember(currentJieQiObj) { currentJieQiObj?.name ?: "" }
-    val nextJieQiObj = remember(lunar) { lunar.getNextJieQi(false) } // 下一個節氣不應包含今天
+    val nextJieQiObj = remember(lunar) { lunar.getNextJieQi(false) }
     val nextTermName = remember(nextJieQiObj) { nextJieQiObj?.name ?: "" }
 
     val daysSince = remember(currentJieQiObj) {
@@ -103,11 +95,9 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
         ceil((todayCal.timeInMillis - currTermCal.timeInMillis) / (1000.0 * 3600 * 24)).toInt() + 1
     }
 
-    // 快取宜忌列表
     val dayYi = remember(lunar) { lunar.dayYi }
     val dayJi = remember(lunar) { lunar.dayJi }
 
-    // 生肖年表
     val currentYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
     val zodiacList = remember(currentYear) {
         (-6..6).map { i ->
@@ -117,12 +107,38 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
         }
     }
 
-    // 狀態控制
+    val calendarTheme = remember(lunar) {
+        val festivals = lunar.festivals + lunar.solar.festivals
+        val isSunday = lunar.solar.week == 0
+        val isSaturday = lunar.solar.week == 6
+        val isSolarTerm = lunar.jieQi.isNotEmpty()
+        
+        when {
+            festivals.any { it.contains("春節") || it.contains("除夕") || it.contains("端午") || it.contains("中秋") || it.contains("國慶") || it.contains("元旦") } -> {
+                CardTheme(Color(0xFFB34747), Color.White, Color(0xFFFFD700), "festival")
+            }
+            isSunday -> {
+                CardTheme(Color(0xFFB34747), Color.White, Color(0xFFFFD700), "sunday")
+            }
+            isSolarTerm -> {
+                CardTheme(Color(0xFF436B43), Color.White, Color(0xFFE0F2F1), "term")
+            }
+            isSaturday -> {
+                CardTheme(Color(0xFF436B43), Color.White, Color(0xFFE0F2F1), "saturday")
+            }
+            else -> {
+                CardTheme(Color(0xFF2E455E), Color.White, Color(0xFFB0BEC5), "daily")
+            }
+        }
+    }
+
     var showTermDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showAuspiciousFullScreen by remember { mutableStateOf(false) }
+    var showSupportScreen by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
-    val isAnyDialogOpen = showTermDialog || showSettingsDialog || showAuspiciousFullScreen
+    val isAnyDialogOpen = showTermDialog || showSettingsDialog || showAuspiciousFullScreen || showSupportScreen
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
@@ -131,14 +147,50 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
     Scaffold(
         topBar = {
             BlurryContainer(isBlur = isAnyDialogOpen) {
-                CommonTopBar(
-                    title = "黃曆",
-                    onSettingsClick = { showSettingsDialog = true },
-                    containerColor = MaterialTheme.colorScheme.surface
+                CenterAlignedTopAppBar(
+                    title = { 
+                        Text(
+                            text = "黃曆", 
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.titleLarge
+                        ) 
+                    },
+                    actions = {
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("設置") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showSettingsDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("打賞支持") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showSupportScreen = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.VolunteerActivism, null) }
+                                )
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
                 )
             }
         },
-        containerColor = Color.Transparent // 讓 MainScreen 的淺灰色背景透過來
+        containerColor = Color.Transparent
     ) { padding ->
         BlurryContainer(
             isBlur = isAnyDialogOpen,
@@ -155,51 +207,57 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
             ) {
                 // --- 農曆大卡片 ---
                 Card(
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFB71C1C)),
+                    colors = CardDefaults.cardColors(containerColor = calendarTheme.bgColor),
                     shape = RoundedCornerShape(16.dp),
                     elevation = CardDefaults.cardElevation(10.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = "${lunar.monthInChinese}月 ${lunar.yearInGanZhi}年",
-                            fontSize = 23.sp,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        CalendarPattern(
+                            modifier = Modifier.matchParentSize(),
+                            patternType = calendarTheme.patternType,
+                            color = calendarTheme.textColor.copy(alpha = 0.12f)
                         )
 
-                        Text(
-                            text = lunar.dayInChinese,
-                            fontSize = 36.sp,
-                            fontWeight = FontWeight.Black,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "${lunar.monthInChinese}月 ${lunar.yearInGanZhi}年",
+                                style = MaterialTheme.typography.titleLarge,
+                                color = calendarTheme.textColor,
+                                textAlign = TextAlign.Center
+                            )
 
-                        Text(
-                            text = "【屬${lunar.yearShengXiao}】",
-                            fontSize = 20.sp,
-                            color = Color.Yellow,
-                            textAlign = TextAlign.Center
-                        )
+                            Text(
+                                text = lunar.dayInChinese,
+                                style = MaterialTheme.typography.displayLarge,
+                                fontWeight = FontWeight.Black,
+                                color = calendarTheme.textColor,
+                                textAlign = TextAlign.Center
+                            )
 
-                        // --- 新曆日期與星期 ---
-                        Text(
-                            text = SimpleDateFormat(
-                                "yyyy年MM月dd日 EEEE",
-                                Locale.TRADITIONAL_CHINESE
-                            ).format(today),
-                            fontSize = 18.sp,
-                            color = Color.White
-                        )
+                            Text(
+                                text = "【屬${lunar.yearShengXiao}】",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = calendarTheme.shengXiaoColor,
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Text(
+                                text = SimpleDateFormat("yyyy年MM月dd日 EEEE", Locale.TRADITIONAL_CHINESE).format(today),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = calendarTheme.textColor.copy(alpha = 0.9f)
+                            )
+                        }
                     }
                 }
+                
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // --- 宜忌卡片 ---
@@ -207,8 +265,8 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    YiJiRow(title = "宜", items = dayYi, color = Color(0xFF2E7D32))
-                    YiJiRow(title = "忌", items = dayJi, color = Color(0xFFC62828))
+                    YiJiRow(title = "宜", items = dayYi, color = Color(0xFFB34747))
+                    YiJiRow(title = "忌", items = dayJi, color = Color(0xFF436B43))
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -217,14 +275,10 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                 Surface(
                     color = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(12.dp),
-                    shadowElevation = 2.dp, // 增加陰影
+                    shadowElevation = 2.dp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .border(
-                            0.5.dp,
-                            MaterialTheme.colorScheme.outlineVariant,
-                            RoundedCornerShape(12.dp)
-                        )
+                        .border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                         .clickable { showTermDialog = true }
                 ) {
                     Row(
@@ -234,13 +288,13 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
-                                .background(Color(0xFFE0F2F1), RoundedCornerShape(50)),
+                                .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(50)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 Icons.Outlined.Eco,
-                                contentDescription = null,
-                                tint = Color(0xFF00695C),
+                                null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -250,32 +304,30 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     text = currentTermName,
-                                    fontSize = 24.sp,
+                                    style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF5D4037)
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Surface(
-                                    color = Color(0xFF5D4037),
+                                    color = MaterialTheme.colorScheme.primary,
                                     shape = RoundedCornerShape(13.dp)
                                 ) {
                                     Text(
                                         text = "第${daysSince}天",
-                                        fontSize = 12.sp,
-                                        color = Color.White,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         modifier = Modifier.padding(horizontal = 8.dp)
                                     )
                                 }
                             }
-
-                            Text(text = "下一個節氣：$nextTermName")
+                            Text(
+                                text = "下一個節氣：$nextTermName",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
-                        Icon(
-                            Icons.Default.Info,
-                            contentDescription = null,
-                            tint = Color.LightGray,
-                            modifier = Modifier.size(26.dp)
-                        )
+                        Icon(Icons.Default.Info, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), modifier = Modifier.size(26.dp))
                     }
                 }
 
@@ -289,23 +341,13 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                     val zodiacListState = rememberLazyListState()
                     val view = LocalView.current
 
-                    // 增加刻度震動效果：隨滑動位移觸發，產生快慢節奏感
                     LaunchedEffect(zodiacListState) {
-                        val tickPx = with(density) { 20.dp.toPx() } // 每滑動 20dp 震動一次
-                        val itemWidthPx = with(density) { (75.dp + 10.dp).toPx() } // 項目寬度 + 間距
-
-                        var lastTotalOffset = -1f // 初始值
-
-                        snapshotFlow {
-                            zodiacListState.firstVisibleItemIndex * itemWidthPx + zodiacListState.firstVisibleItemScrollOffset
-                        }.collect { currentOffset ->
-                            if (lastTotalOffset == -1f) {
-                                lastTotalOffset = currentOffset
-                                return@collect
-                            }
-
+                        val tickPx = with(density) { 20.dp.toPx() }
+                        val itemWidthPx = with(density) { (75.dp + 10.dp).toPx() }
+                        var lastTotalOffset = -1f
+                        snapshotFlow { zodiacListState.firstVisibleItemIndex * itemWidthPx + zodiacListState.firstVisibleItemScrollOffset }.collect { currentOffset ->
+                            if (lastTotalOffset == -1f) { lastTotalOffset = currentOffset; return@collect }
                             if (kotlin.math.abs(currentOffset - lastTotalOffset) >= tickPx) {
-                                // 使用 View 層級的 CLOCK_TICK，震動感更明顯且適合刻度
                                 view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                                 lastTotalOffset = currentOffset
                             }
@@ -313,244 +355,156 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                     }
 
                     LaunchedEffect(key1 = currentYear) {
-                        zodiacListState.scrollToItem(
-                            index = 6,
-                            scrollOffset = -with(density) {
-                                ((screenWidth - itemWidth) / 2).toPx().toInt()
-                            })
+                        zodiacListState.scrollToItem(index = 6, scrollOffset = -with(density) { ((screenWidth - itemWidth) / 2).toPx().toInt() })
                     }
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        // 左滑動提示圖標
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(24.dp)
-                        )
-
-                        LazyRow(
-                            state = zodiacListState,
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
+                    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), modifier = Modifier.size(24.dp))
+                        LazyRow(state = zodiacListState, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             itemsIndexed(zodiacList) { _, (year, shengXiao) ->
-                                ZodiacCard(
-                                    year = year,
-                                    shengXiao = shengXiao,
-                                    isCurrent = year == currentYear
-                                )
+                                ZodiacCard(year = year, shengXiao = shengXiao, isCurrent = year == currentYear)
                             }
                         }
-
-                        // 右滑動提示圖標
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), modifier = Modifier.size(24.dp))
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // --- 吉日按鈕 ---
                 ElevatedButton(
                     onClick = { showAuspiciousFullScreen = true },
-                    modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .height(54.dp),
-                    colors = ButtonDefaults.elevatedButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
+                    modifier = Modifier.fillMaxWidth(0.85f).height(54.dp),
+                    colors = ButtonDefaults.elevatedButtonColors(containerColor = Color(0xFFB34747), contentColor = Color.White),
                     elevation = ButtonDefaults.elevatedButtonElevation(defaultElevation = 2.dp)
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.EventNote, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.EventNote, null)
                     Spacer(modifier = Modifier.width(10.dp))
                     Text("查看吉日 (Auspicious Days)", fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        // --- 對話框內容 ---
-            if (showTermDialog) {
-                val structuredData = remember(currentTermName) { SolarTermData.getStructuredData(currentTermName) }
+        if (showTermDialog) {
+            val structuredData = remember(currentTermName) { SolarTermData.getStructuredData(currentTermName) }
+            Dialog(onDismissRequest = { showTermDialog = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+                Card(modifier = Modifier.fillMaxWidth(0.92f).padding(16.dp), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh), elevation = CardDefaults.cardElevation(12.dp)) {
+                    Column(modifier = Modifier.padding(24.dp).verticalScroll(rememberScrollState())) {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(text = "節氣詳解", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            IconButton(onClick = { showTermDialog = false }) { Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        }
+                        Text(text = currentTermName, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        if (structuredData.isEmpty()) {
+                            Text(text = SolarTermData.getDescription(currentTermName), style = MaterialTheme.typography.bodyLarge, lineHeight = 28.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        } else {
+                            structuredData.forEach { (title, content) -> SolarTermSection(title = title, content = content); Spacer(modifier = Modifier.height(12.dp)) }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { showTermDialog = false }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp), contentPadding = PaddingValues(vertical = 12.dp)) { Text("我知道了", style = MaterialTheme.typography.labelLarge) }
+                    }
+                }
+            }
+        }
 
-                Dialog(
-                    onDismissRequest = { showTermDialog = false },
-                    properties = DialogProperties(usePlatformDefaultWidth = false)
+        if (showSettingsDialog) AppSettingsDialog(onDismiss = { showSettingsDialog = false })
+
+        if (showSupportScreen) {
+            Dialog(
+                onDismissRequest = { showSupportScreen = false },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(0.85f).fillMaxHeight(0.85f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    elevation = CardDefaults.cardElevation(12.dp)
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth(0.92f)
-                            .padding(16.dp),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(12.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(24.dp)
-                                .verticalScroll(rememberScrollState())
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        SupportScreen(modifier = Modifier.fillMaxSize())
+                        IconButton(
+                            onClick = { showSupportScreen = false },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = "節氣詳解",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    color = Color.Gray
-                                )
-                                IconButton(onClick = { showTermDialog = false }) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "關閉",
-                                        tint = Color.LightGray
-                                    )
-                                }
-                            }
-
-                            Text(
-                                text = currentTermName,
-                                fontSize = 32.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFFB71C1C)
-                            )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            if (structuredData.isEmpty()) {
-                                Text(
-                                    text = SolarTermData.getDescription(currentTermName),
-                                    fontSize = 16.sp,
-                                    lineHeight = 28.sp,
-                                    color = Color(0xFF5D4037)
-                                )
-                            } else {
-                                structuredData.forEach { (title, content) ->
-                                    SolarTermSection(title = title, content = content)
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Button(
-                                onClick = { showTermDialog = false },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(vertical = 12.dp)
-                            ) {
-                                Text("我知道了", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            }
+                            Icon(Icons.Default.Close, null)
                         }
                     }
                 }
             }
+        }
 
-            if (showSettingsDialog) AppSettingsDialog(onDismiss = { showSettingsDialog = false })
-
-            // --- 全螢幕吉日查詢 ---
-            if (showAuspiciousFullScreen) {
-                Dialog(
-                    onDismissRequest = { showAuspiciousFullScreen = false },
-                    properties = DialogProperties(usePlatformDefaultWidth = false) // 關鍵：允許全螢幕
-                ) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            // 頂部導航列：整合標題與關閉按鈕
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        Icons.Default.Search,
-                                        contentDescription = null,
-                                        tint = Color(0xFF5D4037),
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = "吉日查詢",
-                                        fontSize = 22.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onBackground
-                                    )
-                                }
-
-                                IconButton(onClick = { showAuspiciousFullScreen = false }) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "關閉",
-                                        tint = Color.Gray
-                                    )
-                                }
+        if (showAuspiciousFullScreen) {
+            Dialog(onDismissRequest = { showAuspiciousFullScreen = false }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Default.Search, null, tint = Color(0xFFB34747), modifier = Modifier.size(24.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(text = "吉日查詢", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = Color(0xFFB34747))
                             }
-                            // 嵌入原本的吉日查詢頁面
-                            AuspiciousQueryScreen()
+                            IconButton(onClick = { showAuspiciousFullScreen = false }) { Icon(Icons.Default.Close, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                         }
+                        AuspiciousQueryScreen()
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+fun CalendarPattern(modifier: Modifier = Modifier, patternType: String, color: Color) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        when (patternType) {
+            "festival" -> {
+                val path = Path()
+                for (i in 0..3) { for (j in 0..2) { val cx = (i * w / 3); val cy = (j * h / 2); path.moveTo(cx, cy + 20f); path.quadraticTo(cx + 20f, cy, cx + 40f, cy + 20f); path.quadraticTo(cx + 60f, cy + 40f, cx + 80f, cy + 20f) } }
+                drawPath(path, color, style = Stroke(width = 2f))
+            }
+            "term" -> {
+                for (i in 0..10) { val x = i * w / 10; drawLine(color, Offset(x, 0f), Offset(x + 20f, h), strokeWidth = 1.5f); for (j in 1..3) { val y = j * h / 4; drawLine(color, Offset(x - 5f, y), Offset(x + 10f, y + 5f), strokeWidth = 2f) } }
+            }
+            "sunday" -> {
+                val step = 40f
+                for (x in 0..(w / step).toInt()) { drawLine(color, Offset(x * step, 0f), Offset(x * step, h), strokeWidth = 1f) }
+                for (y in 0..(h / step).toInt()) { drawLine(color, Offset(0f, y * step), Offset(w, y * step), strokeWidth = 1f) }
+            }
+            "saturday" -> {
+                val step = 30f
+                for (i in -10..30) { drawLine(color, Offset(i * step, 0f), Offset(i * step + h, h), strokeWidth = 1.5f) }
+            }
+            else -> {
+                val path = Path()
+                for (j in 0..5) { val y = j * h / 5; path.moveTo(0f, y); for (i in 0..10) { val x = i * w / 10; val offset = if (i % 2 == 0) 15f else -15f; path.quadraticTo(x + w / 20, y + offset, (i + 1) * w / 10, y) } }
+                drawPath(path, color, style = Stroke(width = 1f))
+            }
+        }
+    }
+}
+
+data class CardTheme(val bgColor: Color, val textColor: Color, val shengXiaoColor: Color, val patternType: String)
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun YiJiRow(title: String, items: List<String>, color: Color) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp))
-            .border(
-                0.5.dp,
-                MaterialTheme.colorScheme.outlineVariant,
-                RoundedCornerShape(8.dp)
-            )
-            .padding(8.dp),
+        modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface, RoundedCornerShape(8.dp)).border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)).padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .background(color, RoundedCornerShape(50)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 24.sp)
+        Box(modifier = Modifier.size(46.dp).background(color, RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
+            Text(text = title, color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
         }
         Spacer(modifier = Modifier.width(12.dp))
-        FlowRow(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-            maxItemsInEachRow = 4
-        ) {
-            val displayItems = items.take(8)
+        FlowRow(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            val displayItems = items.take(12)
             if (displayItems.isEmpty()) {
-                Text(text = "無", color = Color.Gray, fontSize = 16.sp)
+                Text(text = "無", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyLarge)
             } else {
                 displayItems.forEach { item ->
-                    Text(
-                        text = item,
-                        fontSize = 20.sp,
-                        color = Color.DarkGray,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Text(text = item, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -559,72 +513,28 @@ fun YiJiRow(title: String, items: List<String>, color: Color) {
 
 @Composable
 fun SolarTermSection(title: String, content: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
-            .padding(16.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp)).padding(16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier
-                    .size(4.dp, 18.dp)
-                    .background(Color(0xFFB71C1C), RoundedCornerShape(2.dp))
-            )
+            Box(modifier = Modifier.size(4.dp, 18.dp).background(MaterialTheme.colorScheme.primary, RoundedCornerShape(2.dp)))
             Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFB71C1C)
-            )
+            Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
         }
         Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = content,
-            fontSize = 16.sp,
-            lineHeight = 26.sp,
-            color = Color(0xFF5D4037)
-        )
+        Text(text = content, style = MaterialTheme.typography.bodyMedium, lineHeight = 26.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 @Composable
 fun ZodiacCard(year: Int, shengXiao: String, isCurrent: Boolean) {
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = if (isCurrent) Color(0xFFB71C1C) else MaterialTheme.colorScheme.surface
-        ),
+        colors = CardDefaults.cardColors(containerColor = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(if (isCurrent) 4.dp else 1.dp),
         shape = RoundedCornerShape(8.dp),
-        modifier = Modifier
-            .width(75.dp)
-            .then(
-                if (!isCurrent) Modifier.border(
-                    0.5.dp,
-                    MaterialTheme.colorScheme.outlineVariant,
-                    RoundedCornerShape(8.dp)
-                ) else Modifier
-            )
+        modifier = Modifier.width(75.dp).then(if (!isCurrent) Modifier.border(0.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp)) else Modifier)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = year.toString(),
-                fontSize = 14.sp,
-                color = if (isCurrent) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                text = shengXiao,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isCurrent) Color(0xFFFFD700) else MaterialTheme.colorScheme.onSurface
-            )
+        Column(modifier = Modifier.fillMaxSize().padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Text(text = year.toString(), style = MaterialTheme.typography.labelMedium, color = if (isCurrent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(text = shengXiao, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = if (isCurrent) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface)
         }
     }
 }

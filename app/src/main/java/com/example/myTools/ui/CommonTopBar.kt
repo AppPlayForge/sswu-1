@@ -2,6 +2,7 @@ package com.example.myTools.ui
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -12,13 +13,22 @@ import androidx.compose.ui.text.font.FontWeight
 fun CommonTopBar(
     title: String,
     onSettingsClick: () -> Unit,
-    containerColor: Color = MaterialTheme.colorScheme.surface
+    actionIcon: ImageVector = Icons.Default.MoreVert,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    titleColor: Color = MaterialTheme.colorScheme.primary // 預設使用主色調，讓標題更適配主題
 ) {
     CenterAlignedTopAppBar(
-        title = { Text(title, fontWeight = FontWeight.Bold) },
+        title = { 
+            Text(
+                text = title, 
+                fontWeight = FontWeight.Bold,
+                color = titleColor,
+                style = MaterialTheme.typography.titleLarge
+            ) 
+        },
         actions = {
             IconButton(onClick = onSettingsClick) {
-                Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                Icon(actionIcon, contentDescription = "更多")
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(

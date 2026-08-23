@@ -1,14 +1,21 @@
 package com.example.myTools.birthday
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -193,20 +200,106 @@ fun AddBirthdayDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                if (name.isBlank()) errorText = "請輸入稱呼"
-                else if (selectedRemindDays.isEmpty()) errorText = "請至少選擇一個提醒日期"
-                else onConfirm(
-                    name,
-                    selectedMonth,
-                    selectedDay,
-                    selectedRemindDays.toList(),
-                    remindHour,
-                    remindMinute
-                )
-            }) { Text(if (initialRecord == null) "確定" else "保存") }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .padding(horizontal = 4.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    // 取消按鈕半區
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "取消",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+
+                    // 垂直分割線
+                    VerticalDivider(
+                        modifier = Modifier
+                            .padding(vertical = 14.dp)
+                            .width(1.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+
+                    // 確定/保存按鈕半區
+                    val isEnabled = name.isNotBlank() && selectedRemindDays.isNotEmpty()
+                    Box(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .fillMaxHeight()
+                            .background(
+                                if (isEnabled) {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                            MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                } else {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                                        )
+                                    )
+                                }
+                            )
+                            .clickable(enabled = isEnabled) {
+                                onConfirm(
+                                    name,
+                                    selectedMonth,
+                                    selectedDay,
+                                    selectedRemindDays.toList(),
+                                    remindHour,
+                                    remindMinute
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                if (initialRecord == null) "確定" else "保存",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
+            }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = null
     )
 
     if (showTimePicker) {

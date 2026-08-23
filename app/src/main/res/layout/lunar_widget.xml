@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
     android:orientation="vertical"
-    android:padding="8dp"
+    android:padding="12dp"
     android:gravity="center">
 
     <TextView
@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:text="農曆日期"
         android:textColor="#B71C1C"
-        android:textSize="18sp"
+        android:textSize="26sp"
         android:textStyle="bold" />
 
     <TextView
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:text="節氣"
         android:textColor="#2E7D32"
-        android:textSize="14sp"
-        android:layout_marginTop="4dp" />
+        android:textSize="18sp"
+        android:layout_marginTop="6dp" />
 
 </LinearLayout>

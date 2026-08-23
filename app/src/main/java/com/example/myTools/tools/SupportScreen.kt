@@ -52,33 +52,32 @@ import com.example.myTools.R
  * 打賞頁面
  * */
 @Composable
-fun SupportScreen() {
+fun SupportScreen(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     Column(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(top = 64.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+            .padding(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             "打賞支持",
             color = MaterialTheme.colorScheme.onBackground,
-            fontSize = 28.sp,
+            style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 8.dp)
         )
         Text(
             "如果覺得這個App對你有幫助\n歡迎打賞支持作者",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
             shape = RoundedCornerShape(16.dp),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
@@ -162,15 +161,15 @@ fun SupportSection(context: Context) {
         ) {
             Text(
                 "加密貨幣支持 (USDT)",
-                fontSize = 16.sp,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Medium,
-                color = Color(0xFF26A17B),
+                color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             Icon(
                 imageVector = Icons.Default.ExpandMore,
                 contentDescription = null,
-                tint = Color(0xFF26A17B),
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.rotate(cryptoRotation)
             )
         }
@@ -200,9 +199,9 @@ fun SupportSection(context: Context) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "Base 網絡",
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF26A17B)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     CryptoAddressRow(
                         context = context,
@@ -231,9 +230,9 @@ fun SupportSection(context: Context) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         "Tron 網絡",
-                        fontSize = 14.sp,
+                        style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF26A17B)
+                        color = MaterialTheme.colorScheme.primary
                     )
                     CryptoAddressRow(
                         context = context,
@@ -245,8 +244,8 @@ fun SupportSection(context: Context) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     "⚠️ 警告：複製的錢包地址必須對應網絡 (Base或Tron)，錯誤的選擇將導致資產永久丟失。",
-                    fontSize = 14.sp,
-                    color = Color.Red.copy(alpha = 0.8f),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
                     lineHeight = 16.sp,
                     modifier = Modifier.padding(horizontal = 4.dp)
                 )
@@ -264,8 +263,8 @@ private fun CryptoAddressRow(context: Context, label: String, address: String) {
         ) {
             Text(
                 address,
-                fontSize = 10.sp,
-                color = Color.Gray,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 modifier = Modifier.weight(1f, fill = false)
             )
@@ -282,7 +281,7 @@ private fun CryptoAddressRow(context: Context, label: String, address: String) {
                     Icons.Default.ContentCopy,
                     null,
                     modifier = Modifier.size(16.dp),
-                    tint = Color(0xFF26A17B)
+                    tint = MaterialTheme.colorScheme.primary
                 )
             }
         }

@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.example.myTools"
-    compileSdk = 36 // 建議保持與 targetSdk 一致或更高
+    compileSdk = 37 // 建議保持與 targetSdk 一致或更高
 
     defaultConfig {
         applicationId = "com.example.ruler"
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "1.5"
+        versionName = "1.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {

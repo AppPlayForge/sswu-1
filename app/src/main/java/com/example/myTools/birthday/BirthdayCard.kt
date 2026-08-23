@@ -55,7 +55,7 @@ fun BirthdayCard(
     }
 
     Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = Modifier.combinedClickable(
@@ -72,7 +72,7 @@ fun BirthdayCard(
             // 立體效果的主圖標
             Surface(
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceVariant,
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
                 shadowElevation = 2.dp,
                 modifier = Modifier.size(48.dp)
             ) {
@@ -88,15 +88,20 @@ fun BirthdayCard(
 
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = record.name, fontSize = 24.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(
+                    text = record.name, 
+                    style = MaterialTheme.typography.headlineSmall, 
+                    fontWeight = FontWeight.Bold, 
+                    color = MaterialTheme.colorScheme.onSurface
+                )
                 Text(
                     text = "農曆： ${getLunarMonthName(record.lunarMonth)}${getLunarDayName(record.lunarDay)}",
-                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = "陽曆： $solarDateStr $weekStr",
-                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (record.remindList.isNotEmpty()) {
@@ -111,7 +116,7 @@ fun BirthdayCard(
                         val timeStr = String.format(Locale.getDefault(), "%02d:%02d", record.remindHour, record.remindMinute)
                         Text(
                             " $timeStr",
-                            fontSize = 16.sp,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -125,7 +130,7 @@ fun BirthdayCard(
                             Surface(color = MaterialTheme.colorScheme.secondaryContainer, shape = RoundedCornerShape(4.dp)) {
                                 Text(
                                     text = if (days == 0) "當天" else "${days}天前",
-                                    fontSize = 14.sp,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
@@ -145,9 +150,9 @@ fun BirthdayCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (daysLeft == 0) {
-                Text("今天!", color = Color.Red, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                Text("今天!", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
             } else {
-                Text("還有$daysLeft 天", fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurface)
+                Text("還有 $daysLeft 天", style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary) // 使用主色突出顯示
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -31,64 +31,66 @@ private fun generatePolarizedScheme(
     isDark: Boolean
 ): ColorScheme {
     return if (isDark) {
-        // 深色模式：深沉背景帶有主色調偏光
-        val darkBg = Color(0xFF0C0E11).compositeOver(primary.copy(alpha = 0.05f))
-        val darkSurface = Color(0xFF1A1C1E).compositeOver(primary.copy(alpha = 0.08f))
+        // 深色模式：更明顯的主色調背景
+        val darkBg = Color(0xFF0C0E11).compositeOver(primary.copy(alpha = 0.12f))
+        val darkSurface = Color(0xFF1A1C1E).compositeOver(primary.copy(alpha = 0.15f))
+        val darkOnSurface = Color(0xFFE2E2E6).compositeOver(primary.copy(alpha = 0.1f))
         
         darkColorScheme(
             primary = primary,
             onPrimary = Color.Black,
-            primaryContainer = primary.copy(alpha = 0.22f).compositeOver(darkSurface),
+            primaryContainer = primary.copy(alpha = 0.25f).compositeOver(darkSurface),
             onPrimaryContainer = primary,
             secondary = secondary,
             onSecondary = Color.Black,
-            secondaryContainer = secondary.copy(alpha = 0.22f).compositeOver(darkSurface),
+            secondaryContainer = secondary.copy(alpha = 0.25f).compositeOver(darkSurface),
             onSecondaryContainer = secondary,
             tertiary = tertiary,
             onTertiary = Color.Black,
-            tertiaryContainer = tertiary.copy(alpha = 0.22f).compositeOver(darkSurface),
+            tertiaryContainer = tertiary.copy(alpha = 0.25f).compositeOver(darkSurface),
             onTertiaryContainer = tertiary,
             background = darkBg,
-            onBackground = Color(0xFFE2E2E6),
+            onBackground = darkOnSurface,
             surface = darkSurface,
-            onSurface = Color(0xFFE2E2E6),
-            surfaceVariant = darkSurface.compositeOver(Color.White.copy(alpha = 0.05f)),
-            onSurfaceVariant = Color(0xFFC3C7CF),
+            onSurface = darkOnSurface,
+            surfaceVariant = darkSurface.compositeOver(Color.White.copy(alpha = 0.08f)),
+            onSurfaceVariant = darkOnSurface.copy(alpha = 0.75f),
             outline = Color(0xFF8D9199),
-            surfaceContainer = darkSurface.compositeOver(primary.copy(alpha = 0.05f)),
+            surfaceContainer = darkSurface.compositeOver(primary.copy(alpha = 0.08f)),
             surfaceContainerLow = darkBg,
-            surfaceContainerHigh = darkSurface.compositeOver(primary.copy(alpha = 0.12f)),
-            surfaceContainerHighest = darkSurface.compositeOver(primary.copy(alpha = 0.18f))
+            surfaceContainerHigh = darkSurface.compositeOver(primary.copy(alpha = 0.16f)),
+            surfaceContainerHighest = darkSurface.compositeOver(primary.copy(alpha = 0.22f))
         )
     } else {
-        // 淺色模式：清爽背景帶有極淡主色調偏光
-        val lightBg = Color(0xFFFDFCFF).compositeOver(primary.copy(alpha = 0.02f))
-        val lightSurface = Color(0xFFFDFCFF).compositeOver(primary.copy(alpha = 0.04f))
+        // 淺色模式：更有「色彩感」的背景 (參考 Pixel 設置頁面)
+        val lightBg = Color(0xFFFDFCFF).compositeOver(primary.copy(alpha = 0.06f))
+        val lightSurface = Color(0xFFFDFCFF).compositeOver(primary.copy(alpha = 0.08f))
+        val lightOnSurface = Color(0xFF1A1C1E).compositeOver(primary.copy(alpha = 0.1f))
         
         lightColorScheme(
             primary = primary,
             onPrimary = Color.White,
-            primaryContainer = primary.copy(alpha = 0.18f).compositeOver(lightSurface),
+            primaryContainer = primary.copy(alpha = 0.22f).compositeOver(lightSurface),
             onPrimaryContainer = primary,
             secondary = secondary,
             onSecondary = Color.White,
-            secondaryContainer = secondary.copy(alpha = 0.18f).compositeOver(lightSurface),
+            secondaryContainer = secondary.copy(alpha = 0.22f).compositeOver(lightSurface),
             onSecondaryContainer = secondary,
             tertiary = tertiary,
             onTertiary = Color.White,
-            tertiaryContainer = tertiary.copy(alpha = 0.18f).compositeOver(lightSurface),
+            tertiaryContainer = tertiary.copy(alpha = 0.22f).compositeOver(lightSurface),
             onTertiaryContainer = tertiary,
             background = lightBg,
-            onBackground = Color(0xFF1A1C1E),
+            onBackground = lightOnSurface,
             surface = lightSurface,
-            onSurface = Color(0xFF1A1C1E),
-            surfaceVariant = Color(0xFFDFE2EB),
-            onSurfaceVariant = Color(0xFF43474E),
+            onSurface = lightOnSurface,
+            surfaceVariant = Color(0xFFDFE2EB).compositeOver(primary.copy(alpha = 0.05f)),
+            onSurfaceVariant = lightOnSurface.copy(alpha = 0.75f),
             outline = Color(0xFF73777F),
             surfaceContainer = lightSurface,
             surfaceContainerLow = lightBg,
-            surfaceContainerHigh = lightSurface.compositeOver(primary.copy(alpha = 0.06f)),
-            surfaceContainerHighest = lightSurface.compositeOver(primary.copy(alpha = 0.1f))
+            surfaceContainerHigh = lightSurface.compositeOver(primary.copy(alpha = 0.08f)),
+            surfaceContainerHighest = lightSurface.compositeOver(primary.copy(alpha = 0.14f))
         )
     }
 }

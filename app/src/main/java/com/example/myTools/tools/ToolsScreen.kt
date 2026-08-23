@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.view.WindowCompat
 import com.example.myTools.MainActivity
 import com.example.myTools.caliper.CaliperScreen
@@ -62,7 +64,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
             (selectedTool != Tool.Luopan.title && selectedTool != Tool.CarSpeed.title && selectedTool != Tool.Caliper.title)
     }
 
-    val isAnyDialogOpen = showSettingsDialog || showThemeDialog
+    val isAnyDialogOpen = showSettingsDialog || showThemeDialog || selectedTool == Tool.Support.title
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
@@ -80,16 +82,17 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         selectedTool = null
     }
 
-    if (selectedTool == null) {
+    if (selectedTool == null || selectedTool == Tool.Support.title) {
         Scaffold(
             topBar = {
                 BlurryContainer(isBlur = isAnyDialogOpen) {
                     TopAppBar(
                         title = { 
                             Text(
-                                "工具箱", 
+                                text = "工具箱", 
                                 style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold 
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             ) 
                         },
                         colors = TopAppBarDefaults.topAppBarColors(
@@ -137,13 +140,38 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                 }
             }
         }
+
+        if (selectedTool == Tool.Support.title) {
+            Dialog(
+                onDismissRequest = { selectedTool = null },
+                properties = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth(0.85f)
+                        .fillMaxHeight(0.85f),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                    elevation = CardDefaults.cardElevation(12.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        SupportScreen(modifier = Modifier.fillMaxSize())
+                        IconButton(
+                            onClick = { selectedTool = null },
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                        ) {
+                            Icon(Icons.Default.Close, null)
+                        }
+                    }
+                }
+            }
+        }
     } else {
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
             when (selectedTool) {
                 Tool.Luopan.title -> LuopanScreen(onBack = { selectedTool = null })
                 Tool.Caliper.title -> CaliperScreen(onBack = { selectedTool = null })
                 Tool.CarSpeed.title -> CarSpeedScreen(onBack = { selectedTool = null })
-                Tool.Support.title -> SupportScreen()
             }
         }
     }
@@ -159,7 +187,7 @@ fun ThemeEntrySection(onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clickable { onClick() },
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -214,13 +242,13 @@ fun ToolItem(tool: Tool, onClick: () -> Unit) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
+        color = MaterialTheme.colorScheme.surfaceContainerLow, // 稍微淺一點，增加層次
         tonalElevation = 1.dp,
         modifier = Modifier
             .aspectRatio(1f)
             .border(
                 0.5.dp, 
-                MaterialTheme.colorScheme.outlineVariant, 
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), // 邊框帶點主題色
                 RoundedCornerShape(16.dp)
             )
     ) {

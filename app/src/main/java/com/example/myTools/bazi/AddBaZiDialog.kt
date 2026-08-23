@@ -1,27 +1,41 @@
 package com.example.myTools.bazi
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +46,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.TextRange
@@ -91,8 +107,12 @@ fun AddBaZiDialog(
     val isHourError = hourInt == null || hourInt !in 0..23
     val isMinuteError = minuteInt == null || minuteInt !in 0..59
 
-    val inputTextStyle = TextStyle(fontSize = 18.sp)
-    val labelTextStyle = TextStyle(fontSize = 14.sp)
+    val inputTextStyle = MaterialTheme.typography.bodyLarge
+    val labelTextStyle = MaterialTheme.typography.labelMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+    val sectionTitleStyle = MaterialTheme.typography.titleMedium.copy(
+        color = MaterialTheme.colorScheme.primary,
+        fontWeight = FontWeight.Bold
+    )
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -145,35 +165,45 @@ fun AddBaZiDialog(
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("性別", style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp))
+                    Text("性別", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium))
                     Spacer(modifier = Modifier.width(16.dp))
                     listOf("男", "女").forEach { g ->
                         val isSelected = gender == g
                         Button(
                             onClick = { gender = g },
-                            colors = if (isSelected) ButtonDefaults.buttonColors() else ButtonDefaults.filledTonalButtonColors(),
+                            colors = if (isSelected) {
+                                ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primary,
+                                    contentColor = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
                             modifier = Modifier.padding(end = 8.dp)
                         ) {
-                            Text(g)
+                            Text(g, style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(16.dp))
                 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("農曆模式", style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp))
+                    Text("農曆模式", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium))
                     Spacer(modifier = Modifier.width(12.dp))
                     Switch(checked = isLunar, onCheckedChange = { isLunar = it })
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(20.dp))
                 
-                Text("出生時間", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text("出生時間", style = sectionTitleStyle)
+                HorizontalDivider(modifier = Modifier.padding(top = 4.dp, bottom = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -181,7 +211,7 @@ fun AddBaZiDialog(
                         onValueChange = { year = it },
                         label = { Text("年", style = labelTextStyle) },
                         modifier = Modifier
-                            .weight(1.2f)
+                            .weight(1f)
                             .focusRequester(focusRequesterYear)
                             .onFocusChanged { if (it.isFocused) year = year.copy(selection = TextRange(0, year.text.length)) },
                         singleLine = true,
@@ -201,7 +231,7 @@ fun AddBaZiDialog(
                             Text(label, style = labelTextStyle)
                         },
                         modifier = Modifier
-                            .weight(1.4f)
+                            .weight(1f)
                             .focusRequester(focusRequesterMonth)
                             .onFocusChanged { if (it.isFocused) month = month.copy(selection = TextRange(0, month.text.length)) },
                         singleLine = true,
@@ -221,7 +251,7 @@ fun AddBaZiDialog(
                             Text(label, style = labelTextStyle)
                         },
                         modifier = Modifier
-                            .weight(1.4f)
+                            .weight(1f)
                             .focusRequester(focusRequesterDay)
                             .onFocusChanged { if (it.isFocused) day = day.copy(selection = TextRange(0, day.text.length)) },
                         singleLine = true,
@@ -235,10 +265,10 @@ fun AddBaZiDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                Text("出生時分", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text("出生時分", style = sectionTitleStyle)
+                HorizontalDivider(modifier = Modifier.padding(top = 4.dp, bottom = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -281,10 +311,10 @@ fun AddBaZiDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                Text("出生地點", style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.colorScheme.primary))
-                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                Text("出生地點", style = sectionTitleStyle)
+                HorizontalDivider(modifier = Modifier.padding(top = 4.dp, bottom = 12.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
@@ -321,33 +351,116 @@ fun AddBaZiDialog(
             }
         },
         confirmButton = {
-            Button(
-                enabled = !isYearError && !isMonthError && !isDayError && !isHourError && !isMinuteError,
-                onClick = {
-                    val record = BaZiRecord(
-                        id = initialRecord?.id ?: System.currentTimeMillis(),
-                        surname = surname.text,
-                        givenName = givenName.text,
-                        gender = gender,
-                        year = yearInt!!,
-                        month = monthInt!!,
-                        day = dayInt!!,
-                        hour = hourInt!!,
-                        minute = minuteInt!!,
-                        province = province.text,
-                        city = city.text,
-                        isLunar = isLunar
-                    )
-                    onSave(record)
-                }
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .padding(horizontal = 4.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
             ) {
-                Text("保存", fontSize = 16.sp)
+                Row(modifier = Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
+                    // 取消按鈕半區
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { onDismiss() },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "取消",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            )
+                        }
+                    }
+
+                    // 科技感分割線
+                    VerticalDivider(
+                        modifier = Modifier
+                            .padding(vertical = 14.dp)
+                            .width(1.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+
+                    // 保存按鈕半區 (帶漸變與動感)
+                    val isEnabled = !isYearError && !isMonthError && !isDayError && !isHourError && !isMinuteError
+                    Box(
+                        modifier = Modifier
+                            .weight(1.2f)
+                            .fillMaxHeight()
+                            .background(
+                                if (isEnabled) {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                                            MaterialTheme.colorScheme.primary
+                                        )
+                                    )
+                                } else {
+                                    Brush.horizontalGradient(
+                                        listOf(
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                                        )
+                                    )
+                                }
+                            )
+                            .clickable(enabled = isEnabled) {
+                                val record = BaZiRecord(
+                                    id = initialRecord?.id ?: System.currentTimeMillis(),
+                                    surname = surname.text,
+                                    givenName = givenName.text,
+                                    gender = gender,
+                                    year = yearInt!!,
+                                    month = monthInt!!,
+                                    day = dayInt!!,
+                                    hour = hourInt!!,
+                                    minute = minuteInt!!,
+                                    province = province.text,
+                                    city = city.text,
+                                    isLunar = isLunar
+                                )
+                                onSave(record)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Done,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                                tint = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "保存",
+                                style = MaterialTheme.typography.labelLarge.copy(
+                                    color = if (isEnabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
             }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消", fontSize = 16.sp) }
-        }
+        dismissButton = null
     )
+
+
 }
 
 private fun getLunarMonthName(m: Int): String {

@@ -39,6 +39,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -55,9 +56,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.example.myTools.MainActivity
 import com.example.myTools.ui.BlurryContainer
 import com.nlf.calendar.Lunar
+import com.nlf.calendar.LunarTime
 import java.util.Calendar
 
 //吉日查詢
@@ -101,7 +105,7 @@ fun AuspiciousQueryScreen() {
         ) {
             // 2. 年月選擇器
             Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
                 elevation = CardDefaults.cardElevation(2.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -133,15 +137,15 @@ fun AuspiciousQueryScreen() {
                         Icon(
                             Icons.Default.CalendarMonth,
                             null,
-                            tint = Color(0xFFB71C1C),
+                            tint = Color(0xFFB34747),
                             modifier = Modifier.size(20.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "$selectedYear 年 $selectedMonth 月",
-                            fontSize = 20.sp,
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFB71C1C)
+                            color = Color(0xFFB34747)
                         )
                     }
 
@@ -163,8 +167,8 @@ fun AuspiciousQueryScreen() {
             // 3. 類別選擇 (LazyHorizontalGrid 雙排顯示)
             Text(
                 "選擇事項：",
-                fontSize = 16.sp,
-                color = Color.Gray,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -183,7 +187,7 @@ fun AuspiciousQueryScreen() {
                         onClick = { selectedCategory = category },
                         label = { Text(category) },
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = Color(0xFFB71C1C),
+                            selectedContainerColor = Color(0xFFB34747),
                             selectedLabelColor = Color.White,
                             containerColor = MaterialTheme.colorScheme.surface
                         )
@@ -196,8 +200,8 @@ fun AuspiciousQueryScreen() {
             // 4. 結果列表
             Text(
                 text = "本月共有 ${auspiciousDays.size} 個吉日",
-                fontSize = 16.sp,
-                color = Color.Gray,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
@@ -278,7 +282,7 @@ fun YearMonthPickerDialog(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 2. 月份選擇器 (3列網格，直接點選)
-                Text("選擇月份", fontSize = 14.sp, color = Color.Gray)
+                Text("選擇月份", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Spacer(modifier = Modifier.height(8.dp))
 
                 LazyVerticalGrid(
@@ -291,14 +295,14 @@ fun YearMonthPickerDialog(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(if (isSelected) Color(0xFFB71C1C) else Color(0xFFEEEEEE))
+                                .background(if (isSelected) Color(0xFFB34747) else MaterialTheme.colorScheme.surfaceVariant)
                                 .clickable { tempMonth = month }
                                 .padding(vertical = 12.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "${month}月",
-                                color = if (isSelected) Color.White else Color.Black,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                             )
                         }
@@ -309,14 +313,14 @@ fun YearMonthPickerDialog(
         confirmButton = {
             Button(
                 onClick = { onConfirm(tempYear, tempMonth) },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB71C1C))
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB34747))
             ) {
                 Text("確定")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消", color = Color.Gray)
+                Text("取消", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )
@@ -330,15 +334,21 @@ fun AuspiciousDetailDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier.fillMaxWidth(0.85f),
         title = {
             Text(
                 text = "吉日詳情",
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFF5D4037)
+                color = MaterialTheme.colorScheme.onSurface
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
                 // 公曆農曆對比
                 DetailRow("公曆", "${lunar.solar.year}年${lunar.solar.month}月${lunar.solar.day}日 ${lunar.weekInChinese}")
                 DetailRow("農曆", "${lunar.yearInChinese}年${lunar.monthInChinese}月${lunar.dayInChinese}")
@@ -348,20 +358,22 @@ fun AuspiciousDetailDialog(
 
                 // 宜
                 Row {
-                    Text("【宜】", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("【宜】", color = Color(0xFFB34747), fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Text(
                         text = lunar.dayYi.joinToString("、"),
-                        fontSize = 15.sp,
+                        fontSize = 20.sp,
+                        color = Color(0xFFB34747),
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
 
                 // 忌
                 Row {
-                    Text("【忌】", color = Color(0xFFC62828), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Text("【忌】", color = Color(0xFF436B43), fontWeight = FontWeight.Bold, fontSize = 20.sp)
                     Text(
                         text = lunar.dayJi.joinToString("、"),
-                        fontSize = 15.sp,
+                        fontSize = 20.sp,
+                        color = Color(0xFF436B43),
                         modifier = Modifier.padding(top = 1.dp)
                     )
                 }
@@ -371,24 +383,95 @@ fun AuspiciousDetailDialog(
                 // 沖煞
                 Text(
                     text = "沖：${lunar.dayChongDesc} | 煞：${lunar.daySha}",
-                    color = Color.Gray,
-                    fontSize = 16.sp
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 18.sp
                 )
+
+                HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+
+                // 吉時資料
+                Text(
+                    text = "吉時詳情",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFB34747)
+                )
+
+                lunar.times.forEach { time ->
+                    HourDetailRow(time)
+                }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("確定", color = Color(0xFFB71C1C), fontWeight = FontWeight.Bold)
+                Text("確定", color = Color(0xFFB34747), fontWeight = FontWeight.Bold)
             }
         }
     )
 }
 
 @Composable
+fun HourDetailRow(time: LunarTime) {
+    val luckColor = if (time.tianShenLuck == "吉") Color(0xFFB34747) else Color.Gray
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+            .padding(8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "${time.ganZhi}時 (${time.minHm}-${time.maxHm})",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Surface(
+                color = luckColor,
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = time.tianShenLuck,
+                    color = Color.White,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        if (time.yi.isNotEmpty()) {
+            Text(
+                text = "宜：${time.yi.joinToString("、")}",
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                color = Color(0xFFB34747)
+            )
+        }
+        
+        if (time.ji.isNotEmpty()) {
+            Text(
+                text = "忌：${time.ji.joinToString("、")}",
+                fontSize = 16.sp,
+                lineHeight = 22.sp,
+                color = Color(0xFF436B43)
+            )
+        }
+    }
+}
+
+@Composable
 fun DetailRow(label: String, value: String) {
     Row {
-        Text("$label：", color = Color.Gray, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-        Text(value, color = Color.Black, fontSize = 16.sp)
+        Text("$label：", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Medium, fontSize = 18.sp)
+        Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 18.sp)
     }
 }
 
@@ -419,18 +502,18 @@ fun AuspiciousDayCard(lunar: Lunar, onClick: () -> Unit) {
                 Icon(
                     Icons.Default.CalendarMonth,
                     contentDescription = null,
-                    tint = Color(0xFFB71C1C),
+                    tint = Color(0xFFB34747),
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
                     text = lunar.dayInChinese, // 使用 "十六" 而非 "16"，更有農曆感
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFB71C1C)
+                    color = Color(0xFFB34747)
                 )
                 Text(
                     text = "周${lunar.weekInChinese}",
-                    fontSize = 12.sp,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -440,31 +523,31 @@ fun AuspiciousDayCard(lunar: Lunar, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "陽曆：${lunar.solar.year}年${lunar.solar.month}月${lunar.solar.day}日",
-                    fontSize = 18.sp,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "${lunar.monthInGanZhi}月 ${lunar.dayInGanZhi}日",
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "沖${lunar.dayChongDesc} ${lunar.daySha}",
-                    fontSize = 16.sp,
-                    color = Color.Red.copy(alpha = 0.7f)
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                 )
             }
 
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .background(Color(0x222E7D32), RoundedCornerShape(50)),
+                    .background(Color(0xFFB34747).copy(alpha = 0.15f), RoundedCornerShape(50)),
                 contentAlignment = Alignment.Center
             ) {
-                Text("宜", color = Color(0xFF2E7D32), fontWeight = FontWeight.Bold)
+                Text("宜", color = Color(0xFFB34747), fontWeight = FontWeight.Bold)
             }
         }
     }

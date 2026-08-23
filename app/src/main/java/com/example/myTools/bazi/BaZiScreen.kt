@@ -4,6 +4,13 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,11 +33,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -43,6 +52,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,8 +75,8 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.MainActivity
 import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.ui.BlurryContainer
-import com.example.myTools.ui.CommonTopBar
 import com.example.myTools.ui.DeleteConfirmDialog
+import com.example.myTools.ui.SearchableTopBar
 import com.example.myTools.ui.ThreeDIconButton
 import com.nlf.calendar.EightChar
 import com.nlf.calendar.Lunar
@@ -83,6 +94,15 @@ fun BaZiScreen() {
     var recordToDelete by remember { mutableStateOf<BaZiRecord?>(null) }
     var selectedRecord by remember { mutableStateOf<BaZiRecord?>(null) }
 
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredRecords = if (searchQuery.isEmpty()) {
+        records
+    } else {
+        records.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
     val isAnyDialogOpen = showAddDialog || showSettingsDialog || recordToEdit != null || recordToDelete != null || selectedRecord != null
 
     LaunchedEffect(isAnyDialogOpen) {
@@ -93,9 +113,12 @@ fun BaZiScreen() {
         containerColor = Color.Transparent, // 讓底色透出來
         topBar = {
             BlurryContainer(isBlur = isAnyDialogOpen) {
-                CommonTopBar(
+                SearchableTopBar(
                     title = "八字命盤",
-                    onSettingsClick = { showSettingsDialog = true }
+                    isSearchActive = isSearchActive,
+                    onSearchActiveChange = { isSearchActive = it },
+                    searchQuery = searchQuery,
+                    onQueryChange = { searchQuery = it }
                 )
             }
         },
@@ -131,13 +154,18 @@ fun BaZiScreen() {
                 .padding(padding)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                if (records.isEmpty()) {
+                if (filteredRecords.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("暫無紀錄，請點擊右下角按鈕添加", color = Color.Gray)
+                        val emptyText = if (searchQuery.isEmpty()) "暫無紀錄，請點擊右下角按鈕添加" else "未找到匹配 \"$searchQuery\" 的紀錄"
+                        Text(
+                            text = emptyText, 
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(records) { record ->
+                        items(filteredRecords) { record ->
                             BaZiRecordItem(
                                 record = record,
                                 onClick = { selectedRecord = record },
@@ -211,7 +239,7 @@ fun BaZiRecordItem(
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
         shape = RoundedCornerShape(12.dp)
     ) {
         Row(
@@ -239,9 +267,18 @@ fun BaZiRecordItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = record.name, fontSize = 20.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(
+                        text = record.name, 
+                        style = MaterialTheme.typography.titleLarge, 
+                        fontWeight = FontWeight.Bold, 
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(text = record.gender, fontSize = 14.sp, color = if (record.gender == "女") Color.Magenta else Color.Blue)
+                    Text(
+                        text = record.gender, 
+                        style = MaterialTheme.typography.labelLarge, 
+                        color = if (record.gender == "女") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary // 使用 primary 更有主題感
+                    )
                 }
                 val typeStr = if (record.isLunar) "農曆" else "公曆"
                 Text(
@@ -253,7 +290,7 @@ fun BaZiRecordItem(
                             record.minute
                         )
                     }",
-                    fontSize = 16.sp,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -498,8 +535,9 @@ fun BaZiDetailDialog(
                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
                     Text(
                         calculateWuXingBalance(baZi),
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Medium
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
 
                     Spacer(modifier = Modifier.height(18.dp))
@@ -545,8 +583,18 @@ fun BaZiDetailDialog(
 @Composable
 fun CangGanItem(label: String, list: List<String>) {
     Row(modifier = Modifier.fillMaxWidth()) {
-        Text(text = "$label: ", fontWeight = FontWeight.Bold, modifier = Modifier.width(100.dp))
-        Text(text = list.joinToString("  "))
+        Text(
+            text = "$label: ", 
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.Bold, 
+            modifier = Modifier.width(100.dp),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Text(
+            text = list.joinToString("  "),
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
@@ -555,20 +603,25 @@ fun InfoRow(label: String, value: String) {
     Row(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(
             text = "$label: ",
-            fontSize = 20.sp
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text(text = value, fontSize = 18.sp)
+        Text(
+            text = value, 
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
     }
 }
 
 @Composable
 fun BaZiColumn(label: String, value: String, tenShi: String, wuXing: String, naYin: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(4.dp)) {
-        Text(label, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(tenShi, fontSize = 16.sp, color = Color(0xFFB71C1C), fontWeight = FontWeight.Bold)
-        Text(value, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
-        Text(wuXing, fontSize = 16.sp, color = Color(0xFF1B5E20))
-        Text(naYin, fontSize = 14.sp, color = Color.Gray)
+        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(tenShi, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text(value, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.ExtraBold, color = MaterialTheme.colorScheme.onSurface)
+        Text(wuXing, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.secondary)
+        Text(naYin, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -9,8 +9,15 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -35,6 +43,7 @@ import androidx.core.content.ContextCompat
 import com.example.myTools.MainActivity
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.DeleteConfirmDialog
+import com.example.myTools.ui.SearchableTopBar
 
 
 /*
@@ -58,6 +67,16 @@ fun LunarBirthdayScreen() {
 
     // 持久化數據狀態
     var birthdayList by remember { mutableStateOf(BirthdayManager.loadList(context)) }
+
+    // 搜索狀態
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredList = if (searchQuery.isEmpty()) {
+        birthdayList
+    } else {
+        birthdayList.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
 
     // UI 控制狀態
     var showAddDialog by remember { mutableStateOf(false) }
@@ -107,8 +126,12 @@ fun LunarBirthdayScreen() {
     Scaffold(
         topBar = {
             BlurryContainer(isBlur = isAnyDialogOpen) {
-                CenterAlignedTopAppBar(
-                    title = { Text("農曆生日提醒", fontWeight = FontWeight.Bold) },
+                SearchableTopBar(
+                    title = "農曆生日提醒",
+                    isSearchActive = isSearchActive,
+                    onSearchActiveChange = { isSearchActive = it },
+                    searchQuery = searchQuery,
+                    onQueryChange = { searchQuery = it },
                     actions = {
                         IconButton(onClick = {
                             // 檢查通知權限 (Android 13+)
@@ -134,13 +157,10 @@ fun LunarBirthdayScreen() {
                             Icon(
                                 imageVector = Icons.Default.Notifications,
                                 contentDescription = "測試通知",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = MaterialTheme.colorScheme.primary // 適配主題色
                             )
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    }
                 )
             }
         },
@@ -180,13 +200,18 @@ fun LunarBirthdayScreen() {
                 .padding(innerPadding)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-                if (birthdayList.isEmpty()) {
+                if (filteredList.isEmpty()) {
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text("尚未添加生日紀錄", color = Color.Gray, fontSize = 18.sp)
+                        val emptyText = if (searchQuery.isEmpty()) "尚未添加生日紀錄" else "未找到匹配 \"$searchQuery\" 的紀錄"
+                        Text(
+                            text = emptyText, 
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 } else {
                     LazyColumn(
@@ -194,7 +219,7 @@ fun LunarBirthdayScreen() {
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(birthdayList, key = { it.id }) { record ->
+                        items(filteredList, key = { it.id }) { record ->
                             BirthdayCard(
                                 record = record,
                                 onEdit = { editingRecord = record },
@@ -214,7 +239,7 @@ fun LunarBirthdayScreen() {
                     text = {
                         Text(
                             "為了確保能準時收到生日提醒，請開啟「通知」和「精確鬧鐘」權限。",
-                            fontSize = 18.sp
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     },
                     confirmButton = {
