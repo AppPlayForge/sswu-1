@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
@@ -57,6 +58,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.MainActivity
 import com.example.myTools.auspicious.AuspiciousQueryScreen
 import com.example.myTools.tools.AppSettingsDialog
+import com.example.myTools.tools.DataManagementDialog
 import com.example.myTools.tools.SupportScreen
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.CommonTopBar
@@ -134,6 +136,7 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
 
     var showTermDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showDataManagementDialog by remember { mutableStateOf(false) }
     var showAuspiciousFullScreen by remember { mutableStateOf(false) }
     var showSupportScreen by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
@@ -159,12 +162,24 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                     actions = {
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
-                                Icon(Icons.Default.MoreVert, contentDescription = "更多")
+                                Icon(
+                                    Icons.Default.MoreVert, 
+                                    contentDescription = "更多",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                             DropdownMenu(
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
+                                DropdownMenuItem(
+                                    text = { Text("數據管理") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showDataManagementDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.CloudSync, null) }
+                                )
                                 DropdownMenuItem(
                                     text = { Text("設置") },
                                     onClick = {
@@ -408,6 +423,8 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
         }
 
         if (showSettingsDialog) AppSettingsDialog(onDismiss = { showSettingsDialog = false })
+
+        if (showDataManagementDialog) DataManagementDialog(onDismiss = { showDataManagementDialog = false })
 
         if (showSupportScreen) {
             Dialog(

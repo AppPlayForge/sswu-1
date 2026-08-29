@@ -2,12 +2,14 @@ package com.example.myTools.tools
 
 import android.Manifest
 import android.app.AlarmManager
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -127,13 +129,6 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                     .padding(20.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text(
-                    text = "應用設置",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-
                 // 分組 1：權限管理
                 SettingsGroup(title = "功能權限", icon = Icons.Default.Security) {
                     PermissionRow(
@@ -158,75 +153,6 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 分組 2：關於與聯繫
-                SettingsGroup(
-                    title = "關於我們",
-                    icon = Icons.Default.Support,
-                    initialExpanded = false
-                ) {
-                    SettingsItem(
-                        title = "聯繫作者",
-                        subtitle = "sswuss@outlook.com",
-                        onClick = {
-                            val intent = Intent(Intent.ACTION_SENDTO).apply {
-                                data = "mailto:sswuss@outlook.com".toUri()
-                                putExtra(Intent.EXTRA_SUBJECT, "App 反饋")
-                            }
-                            try {
-                                context.startActivity(intent)
-                            } catch (_: Exception) {}
-                        }
-                    )
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "我們的頻道",
-                            modifier = Modifier.weight(1f), 
-                            fontSize = 16.sp,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        IconButton(onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, "https://youtu.be/SDCEfVyvQis".toUri())
-                            context.startActivity(intent)
-                        }) {
-                            Icon(Icons.Default.PlayCircle, "Youtube", tint = Color.Red)
-                        }
-
-                        IconButton(onClick = {
-                            val intent = Intent(Intent.ACTION_VIEW, "https://m.bilibili.com/space/297639121".toUri())
-                            context.startActivity(intent)
-                        }) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_bilibili),
-                                contentDescription = "Bilibili",
-                                tint = Color.Unspecified // 使用向量圖自帶的粉色
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // 分組 3：作者作品
-                SettingsGroup(
-                    title = "關於作品",
-                    icon = Icons.Default.Code,
-                    initialExpanded = false
-                ) {
-                    WorkLinkItem(
-                        title = "分享App",
-                        url = "https://github.com/AppPlayForge/sswu-1.git"
-                    )
-                    WorkLinkItem(title = "其它應用", url = "https://github.com/AppPlayForge")
-                }
-
                 Spacer(modifier = Modifier.height(24.dp))
 
                 // 底部信息
@@ -234,12 +160,6 @@ fun AppSettingsDialog(onDismiss: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        "版本號: v${BuildConfig.VERSION_NAME}", 
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
                     TextButton(
                         onClick = onDismiss,
                         modifier = Modifier.fillMaxWidth()
@@ -323,41 +243,6 @@ fun SettingsGroup(
 }
 
 @Composable
-fun WorkLinkItem(title: String, url: String) {
-    val context = LocalContext.current
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                val intent = Intent(Intent.ACTION_VIEW, url.toUri())
-                context.startActivity(intent)
-            }
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            Icons.Default.Language,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            title, 
-            modifier = Modifier.weight(1f), 
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Icon(
-            Icons.Default.ChevronRight, 
-            contentDescription = null, 
-            tint = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.size(16.dp)
-        )
-    }
-}
-
-@Composable
 private fun PermissionRow(title: String, isGranted: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
@@ -377,27 +262,6 @@ private fun PermissionRow(title: String, isGranted: Boolean, onClick: () -> Unit
             contentDescription = null,
             tint = if (isGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
             modifier = Modifier.size(24.dp)
-        )
-    }
-}
-
-@Composable
-fun SettingsItem(title: String, subtitle: String, onClick: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onClick() }
-            .padding(vertical = 10.dp)
-    ) {
-        Text(
-            title, 
-            fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        Text(
-            subtitle, 
-            fontSize = 13.sp, 
-            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

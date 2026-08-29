@@ -25,8 +25,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.example.myTools.MainActivity
+import com.example.myTools.tools.AppSettingsDialog
+import com.example.myTools.tools.DataManagementDialog
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.DeleteConfirmDialog
 import com.example.myTools.ui.SearchableTopBar
@@ -80,6 +86,9 @@ fun LunarBirthdayScreen() {
 
     // UI 控制狀態
     var showAddDialog by remember { mutableStateOf(false) }
+    var showSettingsDialog by remember { mutableStateOf(false) }
+    var showDataManagementDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
     var editingRecord by remember { mutableStateOf<BirthdayRecord?>(null) }
     var recordToDelete by remember { mutableStateOf<BirthdayRecord?>(null) }
     var showPermissionGuide by remember { mutableStateOf(false) }
@@ -111,7 +120,7 @@ fun LunarBirthdayScreen() {
         }
     }
 
-    val isAnyDialogOpen = showPermissionGuide || showAddDialog || editingRecord != null || recordToDelete != null
+    val isAnyDialogOpen = showPermissionGuide || showAddDialog || showSettingsDialog || showDataManagementDialog || editingRecord != null || recordToDelete != null
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
@@ -132,7 +141,7 @@ fun LunarBirthdayScreen() {
                     onSearchActiveChange = { isSearchActive = it },
                     searchQuery = searchQuery,
                     onQueryChange = { searchQuery = it },
-                    actions = {
+                    navigationIcon = {
                         IconButton(onClick = {
                             // 檢查通知權限 (Android 13+)
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -159,6 +168,38 @@ fun LunarBirthdayScreen() {
                                 contentDescription = "測試通知",
                                 tint = MaterialTheme.colorScheme.primary // 適配主題色
                             )
+                        }
+                    },
+                    actions = {
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert, 
+                                    contentDescription = "更多",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("數據管理") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showDataManagementDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.CloudSync, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("設置") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showSettingsDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                )
+                            }
                         }
                     }
                 )
@@ -308,6 +349,14 @@ fun LunarBirthdayScreen() {
                         editingRecord = null
                     }
                 )
+            }
+
+            if (showSettingsDialog) {
+                AppSettingsDialog(onDismiss = { showSettingsDialog = false })
+            }
+
+            if (showDataManagementDialog) {
+                DataManagementDialog(onDismiss = { showDataManagementDialog = false })
             }
 
             // 刪除確認對話框

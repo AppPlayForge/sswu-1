@@ -35,14 +35,20 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -74,6 +80,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.MainActivity
 import com.example.myTools.tools.AppSettingsDialog
+import com.example.myTools.tools.DataManagementDialog
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.DeleteConfirmDialog
 import com.example.myTools.ui.SearchableTopBar
@@ -90,6 +97,8 @@ fun BaZiScreen() {
     var records by remember { mutableStateOf(BaZiManager.loadList(context)) }
     var showAddDialog by remember { mutableStateOf(false) }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showDataManagementDialog by remember { mutableStateOf(false) }
+    var menuExpanded by remember { mutableStateOf(false) }
     var recordToEdit by remember { mutableStateOf<BaZiRecord?>(null) }
     var recordToDelete by remember { mutableStateOf<BaZiRecord?>(null) }
     var selectedRecord by remember { mutableStateOf<BaZiRecord?>(null) }
@@ -103,7 +112,7 @@ fun BaZiScreen() {
         records.filter { it.name.contains(searchQuery, ignoreCase = true) }
     }
 
-    val isAnyDialogOpen = showAddDialog || showSettingsDialog || recordToEdit != null || recordToDelete != null || selectedRecord != null
+    val isAnyDialogOpen = showAddDialog || showSettingsDialog || showDataManagementDialog || recordToEdit != null || recordToDelete != null || selectedRecord != null
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
@@ -118,7 +127,39 @@ fun BaZiScreen() {
                     isSearchActive = isSearchActive,
                     onSearchActiveChange = { isSearchActive = it },
                     searchQuery = searchQuery,
-                    onQueryChange = { searchQuery = it }
+                    onQueryChange = { searchQuery = it },
+                    actions = {
+                        Box {
+                            IconButton(onClick = { menuExpanded = true }) {
+                                Icon(
+                                    Icons.Default.MoreVert, 
+                                    contentDescription = "更多",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                            DropdownMenu(
+                                expanded = menuExpanded,
+                                onDismissRequest = { menuExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("數據管理") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showDataManagementDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.CloudSync, null) }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text("設置") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        showSettingsDialog = true
+                                    },
+                                    leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                )
+                            }
+                        }
+                    }
                 )
             }
         },
@@ -192,6 +233,10 @@ fun BaZiScreen() {
 
     if (showSettingsDialog) {
         AppSettingsDialog(onDismiss = { showSettingsDialog = false })
+    }
+
+    if (showDataManagementDialog) {
+        DataManagementDialog(onDismiss = { showDataManagementDialog = false })
     }
 
     if (recordToEdit != null) {

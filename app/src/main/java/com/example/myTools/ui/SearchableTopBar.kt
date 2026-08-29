@@ -23,6 +23,7 @@ fun SearchableTopBar(
     searchQuery: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
     placeholder: String = "搜索名稱..."
 ) {
@@ -72,10 +73,9 @@ fun SearchableTopBar(
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
+                navigationIcon = navigationIcon,
                 actions = {
-                    // 先渲染傳入的自定義按鈕
-                    actions()
-                    // 默認顯示搜索圖標在最右側
+                    // 默認顯示搜索圖標，改為在左側
                     IconButton(onClick = { onSearchActiveChange(true) }) {
                         Icon(
                             imageVector = Icons.Default.Search,
@@ -83,6 +83,8 @@ fun SearchableTopBar(
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
+                    // 渲染傳入的自定義按鈕（如 3 點菜單），會出現在搜索圖標右側（即最右邊）
+                    actions()
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface
