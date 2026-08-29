@@ -1,4 +1,4 @@
-黃曆，吉日查詢，八字，AI算命，AI起名字，農曆生日提醒，風水羅盤，尺規，車速儀。
+黃曆，吉日查詢，八字，AI算命，AI起名字，農曆生日提醒，風水羅盤，尺規，車速儀，月經記錄。
 
 項目 minSdk 設置為 31 (Android 12)
 支持安卓12系統以上；
@@ -26,11 +26,13 @@ Copyright © 2026 AppPlayForge. All rights reserved.
 
 未經許可的商業轉售、打包銷售或封裝後作為商業軟件發佈將被視為侵權行為。
 
-<img width="50%" alt="黃曆" src="https://github.com/user-attachments/assets/1333ae92-c2c7-4a41-ba81-8f97155e36c8" />
-<img width="50%" alt="吉日" src="https://github.com/user-attachments/assets/82dda03a-31d5-43b2-a1cf-72564a6c5d50" />
-<img width="50%" alt="八字" src="https://github.com/user-attachments/assets/6291665c-7a9e-405b-a0ac-0c46c0a5dbbf" />
-<img width="50%" alt="生日" src="https://github.com/user-attachments/assets/24dfa269-789d-40d6-a82a-b09c0478e798" />
-<img width="50%" alt="車速" src="https://github.com/user-attachments/assets/de3d2955-cd19-4ee0-8f66-952193b06e55" />
-<img width="50%" alt="尺規" src="https://github.com/user-attachments/assets/4607662e-9b38-40bf-842d-2d740f5c92e0" />
-<img width="50%" alt="羅盤" src="https://github.com/user-attachments/assets/339be9a4-e5f8-4cd0-9936-e6e3ed3bb7d2" />
-<img width="50%" alt="工具箱" src="https://github.com/user-attachments/assets/5f4d41ff-0743-4c58-a405-dad55a8a47ad" />
+<img width="30%" alt="黃曆" src="https://github.com/user-attachments/assets/1333ae92-c2c7-4a41-ba81-8f97155e36c8" />
+<img width="30%" alt="Screenshot_20260829_133851" src="https://github.com/user-attachments/assets/4fa7daa7-984c-4e16-bce5-9f60c38dfdeb" />
+<img width="30%" alt="吉日" src="https://github.com/user-attachments/assets/82dda03a-31d5-43b2-a1cf-72564a6c5d50" />
+<img width="30%" alt="八字" src="https://github.com/user-attachments/assets/6291665c-7a9e-405b-a0ac-0c46c0a5dbbf" />
+<img width="30%" alt="Screenshot_20260829_133946" src="https://github.com/user-attachments/assets/81b49b25-90dc-406b-a29f-ce693274d3f7" />
+<img width="30%" alt="生日" src="https://github.com/user-attachments/assets/24dfa269-789d-40d6-a82a-b09c0478e798" />
+<img width="30%" alt="車速" src="https://github.com/user-attachments/assets/de3d2955-cd19-4ee0-8f66-952193b06e55" />
+<img width="30%" alt="尺規" src="https://github.com/user-attachments/assets/4607662e-9b38-40bf-842d-2d740f5c92e0" />
+<img width="30%" alt="羅盤" src="https://github.com/user-attachments/assets/339be9a4-e5f8-4cd0-9936-e6e3ed3bb7d2" />
+<img width="30%" alt="Screenshot_20260829_133914" src="https://github.com/user-attachments/assets/c771cafb-bfc3-407d-895d-695cbf8f9d48" />
