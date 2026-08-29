@@ -9,18 +9,9 @@ import com.example.myTools.birthday.BirthdayManager
 import com.example.myTools.birthday.BirthdayRecord
 import com.example.myTools.period.PeriodDataManager
 import com.example.myTools.period.PeriodRecord
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
-
-data class AppDataExport(
-    val baziList: List<BaZiRecord>,
-    val birthdayList: List<BirthdayRecord>,
-    val periodList: List<PeriodRecord>,
-    val exportTime: Long = System.currentTimeMillis()
-)
 
 object DataManagementUtils {
     private const val PREF_NAME = "activation_prefs"
@@ -55,57 +46,161 @@ object DataManagementUtils {
         return false
     }
 
-    fun exportDataToJson(context: Context): String {
+    /**
+     * 導出全量數據為 CSV (支持 Excel 查看與 App 導入)
+     */
+    fun exportAllToCsv(context: Context): String {
         val baziList = BaZiManager.loadList(context)
         val birthdayList = BirthdayManager.loadList(context)
         val periodList = PeriodDataManager(context).getRecords()
-        val export = AppDataExport(baziList, birthdayList, periodList)
-        return Gson().toJson(export)
+        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        
+        val sb = StringBuilder()
+        sb.append('\uFEFF') // UTF-8 BOM
+
+        // --- 八字章節 ---
+        sb.append("# SECTION:BAZI\n")
+        sb.append("ID,姓名,性別,年,月,日,時,分,省份,城市,是否農曆,是否閏月\n")
+        baziList.forEach { r ->
+            sb.append("${r.id},${escapeCsv(r.name)},${r.gender},${r.year},${r.month},${r.day},${r.hour},${r.minute},${escapeCsv(r.province)},${escapeCsv(r.city)},${r.isLunar},${r.isLeapMonth}\n")
+        }
+        sb.append("\n")
+
+        // --- 生日章節 ---
+        sb.append("# SECTION:BIRTHDAY\n")
+        sb.append("ID,姓名,農曆月,農曆日,提醒小時,提醒分鐘,提醒清單\n")
+        birthdayList.forEach { r ->
+            sb.append("${r.id},${escapeCsv(r.name)},${r.lunarMonth},${r.lunarDay},${r.remindHour},${r.remindMinute},\"${r.remindList.joinToString(";")}\"\n")
+        }
+        sb.append("\n")
+
+        // --- 月經章節 ---
+        sb.append("# SECTION:PERIOD\n")
+        sb.append("開始日期,結束日期,持續天數\n")
+        periodList.forEach { r ->
+            val start = sdf.format(Date(r.startDate))
+            val end = r.endDate?.let { sdf.format(Date(it)) } ?: ""
+            val duration = if (r.endDate != null) ((r.endDate - r.startDate) / (24 * 60 * 60 * 1000) + 1).toString() else ""
+            sb.append("$start,$end,$duration\n")
+        }
+
+        return sb.toString()
     }
 
-    fun importDataFromJson(context: Context, json: String): Boolean {
+    /**
+     * 從 CSV 導入全量數據
+     */
+    fun importAllFromCsv(context: Context, csv: String): Boolean {
         return try {
-            val type = object : TypeToken<AppDataExport>() {}.type
-            val data: AppDataExport = Gson().fromJson(json, type)
+            val lines = csv.replace("\uFEFF", "").lines()
+            val baziList = mutableListOf<BaZiRecord>()
+            val birthdayList = mutableListOf<BirthdayRecord>()
+            val periodList = mutableListOf<PeriodRecord>()
             
-            // 導入八字
-            BaZiManager.saveList(context, data.baziList)
-            
-            // 導入生日並重新設置鬧鐘
-            BirthdayManager.saveList(context, data.birthdayList)
-            data.birthdayList.forEach { record ->
-                BirthdayManager.scheduleBirthdayAlarm(context, record)
+            var currentSection = ""
+            val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+
+            lines.forEach { line ->
+                val trimmed = line.trim()
+                if (trimmed.isEmpty()) return@forEach
+                
+                if (trimmed.startsWith("# SECTION:")) {
+                    currentSection = trimmed.substringAfter("# SECTION:")
+                    return@forEach
+                }
+
+                // 跳過表頭
+                if (trimmed.startsWith("ID") || trimmed.startsWith("開始日期")) return@forEach
+
+                val parts = parseCsvLine(line)
+                when (currentSection) {
+                    "BAZI" -> {
+                        if (parts.size >= 12) {
+                            baziList.add(BaZiRecord(
+                                id = parts[0].toLong(),
+                                surname = "", // CSV 導出時合併了姓名，導入時放在 givenName
+                                givenName = parts[1],
+                                gender = parts[2],
+                                year = parts[3].toInt(),
+                                month = parts[4].toInt(),
+                                day = parts[5].toInt(),
+                                hour = parts[6].toInt(),
+                                minute = parts[7].toInt(),
+                                province = parts[8],
+                                city = parts[9],
+                                isLunar = parts[10].toBoolean(),
+                                isLeapMonth = parts[11].toBoolean()
+                            ))
+                        }
+                    }
+                    "BIRTHDAY" -> {
+                        if (parts.size >= 7) {
+                            birthdayList.add(BirthdayRecord(
+                                id = parts[0].toLong(),
+                                name = parts[1],
+                                lunarMonth = parts[2].toInt(),
+                                lunarDay = parts[3].toInt(),
+                                remindHour = parts[4].toInt(),
+                                remindMinute = parts[5].toInt(),
+                                remindList = parts[6].split(";").filter { it.isNotEmpty() }.map { it.toInt() }
+                            ))
+                        }
+                    }
+                    "PERIOD" -> {
+                        if (parts.size >= 2) {
+                            val start = sdf.parse(parts[0])?.time ?: return@forEach
+                            val end = if (parts[1].isNotEmpty()) sdf.parse(parts[1])?.time else null
+                            periodList.add(PeriodRecord(start, end))
+                        }
+                    }
+                }
             }
 
-            // 導入月經記錄
-            PeriodDataManager(context).saveRecords(data.periodList)
-            
+            // 保存數據
+            if (baziList.isNotEmpty()) BaZiManager.saveList(context, baziList)
+            if (birthdayList.isNotEmpty()) {
+                BirthdayManager.saveList(context, birthdayList)
+                birthdayList.forEach { BirthdayManager.scheduleBirthdayAlarm(context, it) }
+            }
+            if (periodList.isNotEmpty()) PeriodDataManager(context).saveRecords(periodList)
+
             true
         } catch (e: Exception) {
+            e.printStackTrace()
             false
         }
     }
 
-    // 導出為 Excel 兼容的 CSV 格式（針對月經記錄）
-    fun exportPeriodToCsv(context: Context): String {
-        val records = PeriodDataManager(context).getRecords()
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        val sb = StringBuilder()
-        
-        // CSV Header (UTF-8 with BOM for Excel compatibility)
-        sb.append('\uFEFF')
-        sb.append("開始時間,結束時間,持續天數\n")
-        
-        records.forEach { record ->
-            val start = sdf.format(Date(record.startDate))
-            val end = record.endDate?.let { sdf.format(Date(it)) } ?: "進行中"
-            val duration = if (record.endDate != null) {
-                ((record.endDate - record.startDate) / (24 * 60 * 60 * 1000) + 1).toString()
-            } else {
-                "N/A"
-            }
-            sb.append("$start,$end,$duration\n")
+    private fun escapeCsv(value: String): String {
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"${value.replace("\"", "\"\"")}\""
         }
-        return sb.toString()
+        return value
+    }
+
+    private fun parseCsvLine(line: String): List<String> {
+        val result = mutableListOf<String>()
+        var inQuotes = false
+        var current = StringBuilder()
+        var i = 0
+        while (i < line.length) {
+            val c = line[i]
+            if (c == '\"') {
+                if (inQuotes && i + 1 < line.length && line[i + 1] == '\"') {
+                    current.append('\"')
+                    i++
+                } else {
+                    inQuotes = !inQuotes
+                }
+            } else if (c == ',' && !inQuotes) {
+                result.add(current.toString())
+                current = StringBuilder()
+            } else {
+                current.append(c)
+            }
+            i++
+        }
+        result.add(current.toString())
+        return result
     }
 }

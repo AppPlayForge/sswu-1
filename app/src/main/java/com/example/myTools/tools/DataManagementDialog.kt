@@ -27,35 +27,16 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
     var activationCode by remember { mutableStateOf("") }
     var isActivated by remember { mutableStateOf(DataManagementUtils.isActivated(context)) }
 
-    // 導出文件啟動器
-    val exportLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let {
-            try {
-                val json = DataManagementUtils.exportDataToJson(context)
-                context.contentResolver.openOutputStream(it)?.use { outputStream ->
-                    OutputStreamWriter(outputStream).use { writer ->
-                        writer.write(json)
-                    }
-                }
-                Toast.makeText(context, "數據導出成功", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(context, "導出失敗: ${e.message}", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // 導入文件啟動器
-    val importLauncher = rememberLauncherForActivityResult(
+    // 導入文件啟動器 (CSV 全量)
+    val importCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
         uri?.let {
             try {
                 context.contentResolver.openInputStream(it)?.use { inputStream ->
                     val reader = BufferedReader(InputStreamReader(inputStream))
-                    val json = reader.readText()
-                    if (DataManagementUtils.importDataFromJson(context, json)) {
+                    val csv = reader.readText()
+                    if (DataManagementUtils.importAllFromCsv(context, csv)) {
                         Toast.makeText(context, "數據導入成功", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, "導入失敗: 格式不正確", Toast.LENGTH_SHORT).show()
@@ -67,19 +48,19 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
         }
     }
 
-    // 導出 CSV 文件啟動器 (僅月經記錄)
-    val exportCsvLauncher = rememberLauncherForActivityResult(
+    // 導出 CSV 文件啟動器 (全量)
+    val exportAllCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         uri?.let {
             try {
-                val csv = DataManagementUtils.exportPeriodToCsv(context)
+                val csv = DataManagementUtils.exportAllToCsv(context)
                 context.contentResolver.openOutputStream(it)?.use { outputStream ->
                     OutputStreamWriter(outputStream).use { writer ->
                         writer.write(csv)
                     }
                 }
-                Toast.makeText(context, "月經數據導出成功", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "全量數據導出成功", Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
                 Toast.makeText(context, "導出失敗: ${e.message}", Toast.LENGTH_SHORT).show()
             }
@@ -91,57 +72,41 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
         title = { Text("數據管理", fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                Text(
-                    "備份與恢復您的八字、生日和月經紀錄。導出數據為高級服務，需購買激活碼。",
+                Text("備份與恢復您的八字、生日和月經紀錄。導出數據為高級服務，需購買激活碼。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
-                
-                Text("全量備份 (JSON)", style = MaterialTheme.typography.labelMedium)
+
+                Text("Excel 兼容備份 (推薦)", style = MaterialTheme.typography.labelMedium)
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Button(
                         onClick = {
                             if (isActivated) {
-                                exportLauncher.launch("sswu_backup_${System.currentTimeMillis()}.json")
+                                exportAllCsvLauncher.launch("sswu_data_${System.currentTimeMillis()}.csv")
                             } else {
                                 showActivationDialog = true
                             }
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("導出 JSON")
+                        Text("導出 CSV")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             if (isActivated) {
-                                importLauncher.launch(arrayOf("application/json", "application/octet-stream"))
+                                importCsvLauncher.launch(arrayOf("text/comma-separated-values", "text/csv", "application/octet-stream"))
                             } else {
                                 showActivationDialog = true
                             }
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("導入 JSON")
+                        Text("導入 CSV")
                     }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Excel 兼容導出", style = MaterialTheme.typography.labelMedium)
-                Button(
-                    onClick = {
-                        if (isActivated) {
-                            exportCsvLauncher.launch("period_records_${System.currentTimeMillis()}.csv")
-                        } else {
-                            showActivationDialog = true
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
-                ) {
-                    Text("導出月經記錄 (CSV)")
                 }
 
                 if (!isActivated) {
