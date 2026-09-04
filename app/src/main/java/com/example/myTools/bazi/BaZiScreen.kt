@@ -106,10 +106,12 @@ fun BaZiScreen() {
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredRecords = if (searchQuery.isEmpty()) {
-        records
-    } else {
-        records.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    val filteredRecords = remember(searchQuery, records) {
+        if (searchQuery.isEmpty()) {
+            records
+        } else {
+            records.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
     }
 
     val isAnyDialogOpen = showAddDialog || showSettingsDialog || showDataManagementDialog || recordToEdit != null || recordToDelete != null || selectedRecord != null
@@ -206,7 +208,7 @@ fun BaZiScreen() {
                     }
                 } else {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(filteredRecords) { record ->
+                        items(filteredRecords, key = { it.id }) { record ->
                             BaZiRecordItem(
                                 record = record,
                                 onClick = { selectedRecord = record },

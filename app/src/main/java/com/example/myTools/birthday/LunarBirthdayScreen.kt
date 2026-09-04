@@ -78,10 +78,12 @@ fun LunarBirthdayScreen() {
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredList = if (searchQuery.isEmpty()) {
-        birthdayList
-    } else {
-        birthdayList.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    val filteredList = remember(searchQuery, birthdayList) {
+        if (searchQuery.isEmpty()) {
+            birthdayList
+        } else {
+            birthdayList.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
     }
 
     // UI 控制狀態

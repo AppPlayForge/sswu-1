@@ -2,7 +2,10 @@ package com.example.myTools
 
 import android.app.Activity
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -30,6 +33,16 @@ import com.example.myTools.bazi.BaZiScreen
 import com.example.myTools.birthday.LunarBirthdayScreen
 import com.example.myTools.tools.ToolsScreen
 import com.example.myTools.ui.BlurryContainer
+
+private fun getRouteIndex(route: String?): Int {
+    return when (route) {
+        BottomBarScreen.Almanac.route -> 0
+        BottomBarScreen.BaZi.route -> 1
+        BottomBarScreen.Birthday.route -> 2
+        BottomBarScreen.Tools.route -> 3
+        else -> 0
+    }
+}
 
 @Composable
 fun MainScreen(initialPage: Int = 0) {
@@ -88,6 +101,42 @@ fun MainScreen(initialPage: Int = 0) {
         NavHost(
             navController = navController,
             startDestination = initialRoute,
+            enterTransition = {
+                val initialIndex = getRouteIndex(initialState.destination.route)
+                val targetIndex = getRouteIndex(targetState.destination.route)
+                if (targetIndex > initialIndex) {
+                    slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
+                } else {
+                    slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
+                }
+            },
+            exitTransition = {
+                val initialIndex = getRouteIndex(initialState.destination.route)
+                val targetIndex = getRouteIndex(targetState.destination.route)
+                if (targetIndex > initialIndex) {
+                    slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
+                } else {
+                    slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
+                }
+            },
+            popEnterTransition = {
+                val initialIndex = getRouteIndex(initialState.destination.route)
+                val targetIndex = getRouteIndex(targetState.destination.route)
+                if (targetIndex > initialIndex) {
+                    slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
+                } else {
+                    slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
+                }
+            },
+            popExitTransition = {
+                val initialIndex = getRouteIndex(initialState.destination.route)
+                val targetIndex = getRouteIndex(targetState.destination.route)
+                if (targetIndex > initialIndex) {
+                    slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
+                } else {
+                    slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
                 .padding(bottom = if (isBottomBarVisible) innerPadding.calculateBottomPadding() else 0.dp)

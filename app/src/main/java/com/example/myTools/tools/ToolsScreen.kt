@@ -74,6 +74,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
     var versionClickCount by remember { mutableIntStateOf(0) }
     var showPasswordDialog by remember { mutableStateOf(false) }
     var showGeneratorDialog by remember { mutableStateOf(false) }
+    var showChannelChoiceDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val view = LocalView.current
@@ -92,10 +93,85 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         insetsController.isAppearanceLightStatusBars = shouldShowBottomBar
     }
 
-    val isAnyDialogOpen = showSettingsDialog || showThemeDialog || showDataManagementDialog || showPasswordDialog || showGeneratorDialog || selectedTool == Tool.Support.title
+    val isAnyDialogOpen = showSettingsDialog || showThemeDialog || showDataManagementDialog || showPasswordDialog || showGeneratorDialog || showChannelChoiceDialog || selectedTool == Tool.Support.title
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
+    }
+
+    if (showChannelChoiceDialog) {
+        Dialog(
+            onDismissRequest = { showChannelChoiceDialog = false }
+        ) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                elevation = CardDefaults.cardElevation(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp, vertical = 20.dp)
+                        .width(IntrinsicSize.Max),
+                    horizontalAlignment = Alignment.Start,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // YouTube
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showChannelChoiceDialog = false
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, "https://youtu.be/h1BaFudLBEI".toUri())
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "無法打開連結", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_youtube),
+                            contentDescription = "YouTube",
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+
+                    // Bilibili 搭配 bilibili 標題
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showChannelChoiceDialog = false
+                                try {
+                                    val intent = Intent(Intent.ACTION_VIEW, "https://m.bilibili.com/space/297639121".toUri())
+                                    context.startActivity(intent)
+                                } catch (_: Exception) {
+                                    Toast.makeText(context, "無法打開連結", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_bilibili),
+                            contentDescription = "Bilibili",
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "bilibili",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFB7299)
+                        )
+                    }
+                }
+            }
+        }
     }
 
     if (showSettingsDialog) {
@@ -115,11 +191,19 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         
         AlertDialog(
             onDismissRequest = { showPasswordDialog = false },
-            title = { Text("開發者驗證", fontWeight = FontWeight.Bold) },
+            properties = DialogProperties(
+                dismissOnClickOutside = false,
+                dismissOnBackPress = false,
+                usePlatformDefaultWidth = false
+            ),
+            modifier = Modifier
+                .fillMaxWidth(0.85f)
+                .padding(16.dp),
+            title = { Text("驗證", fontWeight = FontWeight.Bold) },
             text = {
-                Column {
-                    Text("請輸入密碼解鎖激活碼生成器：", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(12.dp))
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     TextField(
                         value = passwordInput,
                         onValueChange = { passwordInput = it },
@@ -145,7 +229,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { showPasswordDialog = false }) {
-                    Text("取消")
+                    Text("關閉")
                 }
             }
         )
@@ -418,22 +502,9 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                         text = { Text("我們的頻道") },
                                         onClick = {
                                             menuExpanded = false
-                                            val intent = Intent(Intent.ACTION_VIEW, "https://youtu.be/SDCEfVyvQis".toUri())
-                                            context.startActivity(intent)
+                                            showChannelChoiceDialog = true
                                         },
-                                        leadingIcon = { Icon(Icons.Default.PlayCircle, null, tint = Color.Red) },
-                                        trailingIcon = {
-                                            IconButton(onClick = {
-                                                val intent = Intent(Intent.ACTION_VIEW, "https://m.bilibili.com/space/297639121".toUri())
-                                                context.startActivity(intent)
-                                            }) {
-                                                Icon(
-                                                    painter = painterResource(id = R.drawable.ic_bilibili),
-                                                    contentDescription = "Bilibili",
-                                                    tint = Color.Unspecified
-                                                )
-                                            }
-                                        }
+                                        leadingIcon = { Icon(Icons.Default.OndemandVideo, contentDescription = null) }
                                     )
                                     val appName = stringResource(id = R.string.app_name)
                                     DropdownMenuItem(
@@ -476,7 +547,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                                 menuExpanded = false
                                                 showPasswordDialog = true
                                             } else if (versionClickCount >= 3) {
-                                                Toast.makeText(context, "再點擊 ${6 - versionClickCount} 次進入開發者模式", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "再點擊 ${6 - versionClickCount} 次", Toast.LENGTH_SHORT).show()
                                             }
                                         }
                                     )

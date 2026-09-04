@@ -376,7 +376,7 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f), modifier = Modifier.size(24.dp))
                         LazyRow(state = zodiacListState, modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            itemsIndexed(zodiacList) { _, (year, shengXiao) ->
+                            itemsIndexed(zodiacList, key = { _, (year, _) -> year }) { _, (year, shengXiao) ->
                                 ZodiacCard(year = year, shengXiao = shengXiao, isCurrent = year == currentYear)
                             }
                         }
