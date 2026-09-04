@@ -275,14 +275,14 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Text("輸入目標設備 ID 生成激活碼：", style = MaterialTheme.typography.bodyMedium)
+                    Text("輸入目標設備ID生成激活碼：", style = MaterialTheme.typography.bodyMedium)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         OutlinedTextField(
                             value = devDeviceId,
                             onValueChange = { devDeviceId = it },
-                            label = { Text("設備 ID") },
+                            label = { Text("設備ID") },
                             singleLine = true,
                             trailingIcon = {
                                 if (devDeviceId.isNotEmpty()) {
@@ -311,7 +311,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                 ActivationSecret.saveHistory(context, trimmedId, generatedCode)
                                 historyList = ActivationSecret.getHistory(context)
                             } else {
-                                Toast.makeText(context, "請輸入設備 ID", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "請輸入設備ID", Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth()
