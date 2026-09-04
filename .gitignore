@@ -1,16 +1,40 @@
-*.iml
-.gradle
-/local.properties
-/.idea/caches
-/.idea/libraries
-/.idea/modules.xml
-/.idea/workspace.xml
-/.idea/navEditor.xml
-/.idea/assetWizardSettings.xml
-.DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+# Built application files & Release outputs
+*.apk
+*.ap_
+*.aab
+*.dex
+*.dm
+output-metadata.json
+
+# Gradle and Build directories
+.gradle/
+/build/
+**/build/
+/app/release/
+**/release/
+
+# Local configuration files
 local.properties
+
+# Android Studio & IntelliJ IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# Android Captures & Native build
+/captures/
+.externalNativeBuild/
+.cxx/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Temporary artifacts
+.artifacts/
+
+# Secret / Custom Configs (do not upload to git)
 generate_activation_code.py
+ActivationSecret.kt
+**/ActivationSecret.kt

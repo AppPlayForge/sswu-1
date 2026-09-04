@@ -2,18 +2,28 @@ package com.example.myTools.period
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
@@ -28,6 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.tools.DataManagementDialog
 import java.text.SimpleDateFormat
@@ -88,8 +100,10 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
     
     var currentMonth by remember { mutableStateOf(Calendar.getInstance()) }
     var recordToDelete by remember { mutableStateOf<PeriodRecord?>(null) }
+    var recordToEdit by remember { mutableStateOf<PeriodRecord?>(null) }
     var showSettingsDialog by remember { mutableStateOf(false) }
     var showDataManagementDialog by remember { mutableStateOf(false) }
+    var showEducationDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     
     // 用於選擇記錄方式的狀態
@@ -97,7 +111,7 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
     var showDateTimePicker by remember { mutableStateOf(false) }
     var isPickingStart by remember { mutableStateOf(true) }
     
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     // 1. 選擇「現在」還是「手動」的對話框
     if (showActionChoiceDialog) {
@@ -205,82 +219,131 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
                 }
             }
 
-            // 頂部固定日曆 + 操作按鈕 (緊湊佈局)
-            Card(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-            ) {
-                Column {
-                    PeriodCalendar(
-                        currentMonth = currentMonth,
-                        records = records,
-                        onMonthChange = { currentMonth = it },
-                        dataManager = dataManager
-                    )
-                    
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    
-                    // 操作區域：按鈕 (佔滿寬度)
-                    Box(modifier = Modifier.padding(12.dp)) {
-                        ActionButtons(
-                            records = records, 
-                            onStart = {
-                                isPickingStart = true
-                                showActionChoiceDialog = true
-                            }, 
-                            onEnd = {
-                                isPickingStart = false
-                                showActionChoiceDialog = true
-                            },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-            }
-
-            // 下方可滑動內容
+            // 可滑動內容區域 (包含動態跑馬燈、日曆卡片、歷史記錄)
             LazyColumn(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(horizontal = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 預測與提醒
+                // 1. 精簡跑馬燈動態公告欄 (整合預測、生理階段與衛教科普，不佔據大面積空間)
                 item {
-                    InfoCard(nextPeriod, phase, dateFormat)
-                }
-
-                // 安全提醒
-                item {
-                    ContraceptionReminder()
-                }
-
-                // 歷史記錄標題
-                item {
-                    Text(
-                        "歷史記錄",
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                        fontWeight = FontWeight.Bold
+                    CompactStatusTicker(
+                        nextPeriod = nextPeriod,
+                        phase = phase,
+                        dateFormat = dateFormat,
+                        onClick = { showEducationDialog = true }
                     )
                 }
 
-                items(records) { record ->
-                    HistoryItem(record, dateFormat) {
-                        recordToDelete = record
+                // 2. 日曆圖表與操作按鈕卡片 (核心重點 #1)
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+                    ) {
+                        Column {
+                            PeriodCalendar(
+                                currentMonth = currentMonth,
+                                records = records,
+                                onMonthChange = { currentMonth = it },
+                                dataManager = dataManager
+                            )
+                            
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant
+                            )
+                            
+                            // 操作區域：按鈕 (佔滿寬度)
+                            Box(modifier = Modifier.padding(12.dp)) {
+                                ActionButtons(
+                                    records = records, 
+                                    onStart = {
+                                        isPickingStart = true
+                                        showActionChoiceDialog = true
+                                    }, 
+                                    onEnd = {
+                                        isPickingStart = false
+                                        showActionChoiceDialog = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                        }
                     }
+                }
+
+                // 3. 歷史記錄標題 (核心重點 #2)
+                item {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 6.dp, bottom = 2.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                "歷史記錄",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = "${records.size} 筆記錄",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                // 4. 歷史記錄列表
+                items(records) { record ->
+                    HistoryItem(
+                        record = record,
+                        dateFormat = dateFormat,
+                        onEdit = { recordToEdit = record },
+                        onDelete = { recordToDelete = record }
+                    )
                 }
                 
                 item { Spacer(modifier = Modifier.height(32.dp)) }
             }
         }
+    }
+
+    // 修改記錄對話框
+    recordToEdit?.let { record ->
+        EditPeriodDialog(
+            record = record,
+            dateFormat = dateFormat,
+            onDismiss = { recordToEdit = null },
+            onConfirm = { updatedStart, updatedEnd ->
+                dataManager.updateRecord(record, PeriodRecord(updatedStart, updatedEnd))
+                records = dataManager.getRecords()
+                recordToEdit = null
+            }
+        )
     }
 
     // 刪除確認對話框
@@ -311,6 +374,11 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
         )
     }
 
+    // 月經與安全期科普對話框 (屏佔比 85%)
+    if (showEducationDialog) {
+        PeriodEducationDialog(onDismiss = { showEducationDialog = false })
+    }
+
     if (showSettingsDialog) {
         AppSettingsDialog(onDismiss = { showSettingsDialog = false })
     }
@@ -320,6 +388,225 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
     }
 }
 
+@Composable
+fun CompactStatusTicker(
+    nextPeriod: Long?,
+    phase: Int,
+    dateFormat: SimpleDateFormat,
+    onClick: () -> Unit
+) {
+    val (phaseName, statusMsg, badgeBg, textColor) = when (phase) {
+        1 -> Quadruple(
+            "排卵期",
+            "當前為排卵期（易孕期），懷孕機率較高！ • 預測下次月經：${nextPeriod?.let { dateFormat.format(Date(it)) } ?: "數據不足"} • 點擊檢視安全期風險與衛教科普",
+            Color(0xFFFF9800),
+            Color(0xFFE65100)
+        )
+        2 -> Quadruple(
+            "月經期",
+            "當前為月經期，請注意休息與保暖。 • 預測下次月經：${nextPeriod?.let { dateFormat.format(Date(it)) } ?: "數據不足"} • 點擊檢視生理衛教科普",
+            Color(0xFFF44336),
+            Color(0xFFC62828)
+        )
+        3 -> Quadruple(
+            "預測期",
+            "預測月經即將到來，請提前做好準備。 • 預測下次月經：${nextPeriod?.let { dateFormat.format(Date(it)) } ?: "數據不足"} • 點擊檢視生理衛教科普",
+            Color(0xFFE91E63),
+            Color(0xFFAD1457)
+        )
+        else -> Quadruple(
+            "安全期",
+            "當前為理論安全期，但仍需注意避孕。 • 預測下次月經：${nextPeriod?.let { dateFormat.format(Date(it)) } ?: "數據不足"} • 點擊檢視安全期風險與衛教科普",
+            Color(0xFF4CAF50),
+            Color(0xFF2E7D32)
+        )
+    }
+
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = badgeBg.copy(alpha = 0.12f),
+        border = BorderStroke(1.dp, badgeBg.copy(alpha = 0.4f)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(horizontal = 10.dp, vertical = 8.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                color = badgeBg,
+                shape = RoundedCornerShape(6.dp)
+            ) {
+                Text(
+                    text = phaseName,
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = statusMsg,
+                style = MaterialTheme.typography.bodySmall,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = textColor,
+                maxLines = 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .basicMarquee(iterations = Int.MAX_VALUE)
+            )
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = textColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
+
+private data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+@Composable
+fun EditPeriodDialog(
+    record: PeriodRecord,
+    dateFormat: SimpleDateFormat,
+    onDismiss: () -> Unit,
+    onConfirm: (startDate: Long, endDate: Long?) -> Unit
+) {
+    var editedStart by remember { mutableLongStateOf(record.startDate) }
+    var editedEnd by remember { mutableStateOf(record.endDate) }
+    var pickingForStart by remember { mutableStateOf(false) }
+    var pickingForEnd by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    if (pickingForStart) {
+        DateTimePickerHandler(
+            onDismiss = { pickingForStart = false },
+            onDateTimeSelected = { selectedMillis ->
+                editedStart = selectedMillis
+                pickingForStart = false
+                if (editedEnd != null && editedEnd!! < editedStart) {
+                    errorMessage = "結束時間不能早於開始時間"
+                } else {
+                    errorMessage = null
+                }
+            }
+        )
+    }
+
+    if (pickingForEnd) {
+        DateTimePickerHandler(
+            onDismiss = { pickingForEnd = false },
+            onDateTimeSelected = { selectedMillis ->
+                if (selectedMillis < editedStart) {
+                    errorMessage = "結束時間不能早於開始時間"
+                } else {
+                    editedEnd = selectedMillis
+                    errorMessage = null
+                }
+                pickingForEnd = false
+            }
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("修改記錄時間") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedCard(
+                    onClick = { pickingForStart = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("開始時間", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                dateFormat.format(Date(editedStart)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Icon(Icons.Default.Edit, contentDescription = "修改開始時間")
+                    }
+                }
+
+                OutlinedCard(
+                    onClick = { pickingForEnd = true },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text("結束時間", style = MaterialTheme.typography.labelMedium)
+                            Text(
+                                editedEnd?.let { dateFormat.format(Date(it)) } ?: "未設定 (進行中)",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Icon(Icons.Default.Edit, contentDescription = "修改結束時間")
+                    }
+                }
+
+                if (editedEnd != null) {
+                    TextButton(
+                        onClick = {
+                            editedEnd = null
+                            errorMessage = null
+                        },
+                        modifier = Modifier.align(Alignment.End)
+                    ) {
+                        Text("清除結束時間 (設為進行中)")
+                    }
+                }
+
+                errorMessage?.let { err ->
+                    Text(err, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (editedEnd != null && editedEnd!! < editedStart) {
+                        errorMessage = "結束時間不能早於開始時間"
+                    } else {
+                        onConfirm(editedStart, editedEnd)
+                    }
+                }
+            ) {
+                Text("儲存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
+}
 
 @Composable
 fun PeriodCalendar(
@@ -333,7 +620,8 @@ fun PeriodCalendar(
         set(Calendar.DAY_OF_MONTH, 1)
     }.get(Calendar.DAY_OF_WEEK) - 1 // 0 for Sunday
 
-    val monthYearFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+    val monthYearFormat = remember { SimpleDateFormat("MMMM yyyy", Locale.getDefault()) }
+    val todayCal = remember { Calendar.getInstance() }
 
     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
         // 頂部導航
@@ -397,19 +685,23 @@ fun PeriodCalendar(
                 for (c in 0 until 7) {
                     val dayIndex = r * 7 + c - firstDayOfWeek + 1
                     if (dayIndex in 1..daysInMonth) {
-                        val cellDate = (currentMonth.clone() as Calendar).apply {
+                        val cellCal = (currentMonth.clone() as Calendar).apply {
                             set(Calendar.DAY_OF_MONTH, dayIndex)
                             set(Calendar.HOUR_OF_DAY, 0)
                             set(Calendar.MINUTE, 0)
                             set(Calendar.SECOND, 0)
                             set(Calendar.MILLISECOND, 0)
-                        }.timeInMillis
+                        }
+                        val cellDate = cellCal.timeInMillis
+                        val isToday = (cellCal.get(Calendar.YEAR) == todayCal.get(Calendar.YEAR) &&
+                                       cellCal.get(Calendar.DAY_OF_YEAR) == todayCal.get(Calendar.DAY_OF_YEAR))
                         
                         val cellPhase = dataManager.getCurrentPhase(cellDate, records)
                         
                         CalendarDayCell(
                             day = dayIndex.toString(),
                             phase = cellPhase,
+                            isToday = isToday,
                             modifier = Modifier.weight(1f)
                         )
                     } else {
@@ -453,7 +745,12 @@ fun LegendItem(label: String, color: Color) {
 }
 
 @Composable
-fun CalendarDayCell(day: String, phase: Int, modifier: Modifier) {
+fun CalendarDayCell(
+    day: String,
+    phase: Int,
+    isToday: Boolean,
+    modifier: Modifier
+) {
     val bgColor = when (phase) {
         0 -> Color(0xFF4CAF50).copy(alpha = 0.1f) // 安全期背景
         1 -> Color(0xFFFF9800).copy(alpha = 0.2f)
@@ -470,12 +767,21 @@ fun CalendarDayCell(day: String, phase: Int, modifier: Modifier) {
         else -> Color.Transparent
     }
 
+    val borderModifier = if (isToday) {
+        Modifier.border(
+            width = 2.dp,
+            color = MaterialTheme.colorScheme.primary,
+            shape = RoundedCornerShape(6.dp)
+        )
+    } else Modifier
+
     Box(
         modifier = modifier
             .padding(1.dp)
             .height(32.dp) // 固定小高度，節省空間
             .clip(RoundedCornerShape(6.dp))
-            .background(bgColor),
+            .background(bgColor)
+            .then(borderModifier),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
@@ -483,7 +789,8 @@ fun CalendarDayCell(day: String, phase: Int, modifier: Modifier) {
                 text = day,
                 style = MaterialTheme.typography.labelSmall,
                 fontSize = 11.sp,
-                color = if (phase != 4) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                fontWeight = if (isToday) FontWeight.ExtraBold else FontWeight.Normal,
+                color = if (isToday) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
             )
             if (phase != 4) {
                 Box(
@@ -515,46 +822,227 @@ fun ActionButtons(records: List<PeriodRecord>, onStart: () -> Unit, onEnd: () ->
 }
 
 @Composable
-fun InfoCard(nextPeriod: Long?, phase: Int, dateFormat: SimpleDateFormat) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+fun PeriodEducationDialog(onDismiss: () -> Unit) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("預測下次：${nextPeriod?.let { dateFormat.format(Date(it)) } ?: "數據不足"}", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
-            Spacer(modifier = Modifier.height(4.dp))
-            if (phase == 0) {
-                Text("當前為理論安全期，但仍需注意避孕。", color = Color(0xFF4CAF50), fontSize = 12.sp)
-            } else if (phase == 1) {
-                Text("當前為排卵期，懷孕機率較高。", color = Color(0xFFFF9800), fontSize = 12.sp)
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.85f),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(20.dp)
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "月經與安全期健康科普",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Scrollable content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    // 第一部分：安全期的限制與風險
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.4f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    "安全期的限制與風險",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                            }
+                            
+                            Text(
+                                "• 排卵時間常因外在因素改變：壓力、作息紊亂、情緒、生病或荷爾蒙波動，都可能導致排卵提早或延後。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                            
+                            Text(
+                                "• 週期較短者沒有「前安全期」：若週期為 21～25 天，排卵日可能提前至第 7～10 天，此時經期剛結束甚至經期末期就已進入危險期。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                            
+                            Text(
+                                "• 避孕失敗率高：依據臨床統計，單純依靠安全期推算的年失敗率約為 12%～24%。若無懷孕計畫，建議搭配保險套、事前避孕藥或子宮內避孕器等更可靠的方式。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    }
+
+                    HorizontalDivider(thickness = 0.5.dp, color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // 第二部分：月經的科普
+                    Text(
+                        "月經的生理科普",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        "月經是女性生理週期的核心表現，也是卵巢與子宮每個月為潛在受孕所進行的循環準備。",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // 1. 月經形成的生理機制
+                    EducationSection(
+                        title = "月經形成的生理機制",
+                        items = listOf(
+                            "• 荷爾蒙推動週期：" to "大腦的下視丘與腦下垂體分泌促性腺激素，指揮卵巢發育卵泡並分泌雌激素。",
+                            "• 子宮內膜增生：" to "雌激素讓子宮內膜持續增厚、充血，宛如替受精卵準備肥沃的溫床。",
+                            "• 排卵與內膜崩解：" to "卵巢釋出一顆成熟卵子。若未受精，體內的黃體素與雌激素濃度會在約兩週後急劇下降，失去荷爾蒙支撐的子宮內膜隨之剝落，混和血液與黏液排出體外，形成月經。"
+                        )
+                    )
+
+                    // 2. 標準週期的常見數據
+                    EducationSection(
+                        title = "標準週期的常見數據",
+                        items = listOf(
+                            "• 週期長度：" to "平均約 28 天（通常 21 至 35 天皆屬正常範圍）。計算方式是從「本次月經見血的第一天」算到「下一次月經見血的前一天」。",
+                            "• 出血天數：" to "一般持續 3 至 7 天，量最多的通常是前 2～3 天。",
+                            "• 總失血量：" to "整個經期正常失血量約在 30 至 80 毫升 之間（約 2 至 5 湯匙的量），其餘多為剝落的內膜組織與分泌物。"
+                        )
+                    )
+
+                    // 3. 打破常見的月經迷思
+                    EducationSection(
+                        title = "打破常見的月經迷思",
+                        items = listOf(
+                            "• 迷思 1：經血是「排毒」與「壞血」？" to "經血本質上就是普通的血液、脫落的子宮內膜碎片及子宮頸黏液，體內並無毒素藉由經血排出。",
+                            "• 迷思 2：經期不能洗頭或運動？" to "洗頭洗澡只要水溫適中、及時吹乾避免受涼即可。適度的輕度有氧運動（如散步、瑜伽）反而能促進骨盆腔血液循環，幫助分泌腦內啡來緩解經痛。",
+                            "• 迷思 3：月經期間吃甜食不會變胖？" to "甜食熱量完全相同，並不會因經期消耗更快；大量精緻糖分引起血糖劇烈波動，甚至可能加劇經前情緒不穩或水腫。",
+                            "• 迷思 4：經期做愛絕對不會懷孕？" to "精子在女性體內最長可存活 3～5 天。若女性週期較短、排卵提早，或是將排卵期出血誤認為月經，仍有受孕可能。"
+                        )
+                    )
+
+                    // 4. 經痛與經前不適的原因
+                    EducationSection(
+                        title = "經痛與經前不適的原因",
+                        items = listOf(
+                            "• 原發性經痛：" to "主要由子宮內膜釋放的前列腺素過高引起，前列腺素會促使子宮肌肉強烈收縮、造成局部短暫缺血而引發絞痛。非類固醇消炎止痛藥（如布洛芬）可在前列腺素生成前發揮抑制作用。",
+                            "• 經前症候群（PMS）：" to "月經來潮前一週內，因荷爾蒙快速變動，常引發下腹悶脹、乳房脹痛、頭痛、情緒焦慮或嗜睡，通常在經血排出後迅速緩解。"
+                        )
+                    )
+
+                    // 5. 何時應尋求婦產科檢查？
+                    EducationSection(
+                        title = "何時應尋求婦產科檢查？",
+                        items = listOf(
+                            "• 月經週期劇烈紊亂：" to "連續數月週期小於 21 天或大於 35 天，或是超過 3 個月沒來（閉經）。",
+                            "• 經血過量：" to "每 1～2 小時就需要更換吸飽的衛生棉，或經血中伴隨大量大於 50 元硬幣的血塊，甚至出現頭暈、貧血。",
+                            "• 嚴重繼發性經痛：" to "疼痛逐年加劇、止痛藥完全無效，需排除子宮內膜異位症（如巧克力囊腫）或子宮肌腺症。"
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Confirm button at bottom
+                Button(
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("我知道了", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
             }
         }
     }
 }
 
 @Composable
-fun ContraceptionReminder() {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                "提醒：安全期並非 100% 安全，若無生育計畫，請務必採取可靠的避孕措施。",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                fontSize = 10.sp
-            )
+fun EducationSection(title: String, items: List<Pair<String, String>>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        items.forEach { (subtitle, detail) ->
+            Column(modifier = Modifier.padding(start = 4.dp)) {
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontSize = 13.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp
+                )
+            }
         }
     }
 }
 
 @Composable
-fun HistoryItem(record: PeriodRecord, dateFormat: SimpleDateFormat, onDelete: () -> Unit) {
+fun HistoryItem(
+    record: PeriodRecord,
+    dateFormat: SimpleDateFormat,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
     val today = System.currentTimeMillis()
     val isOngoing = record.endDate == null
     val dayCount = if (isOngoing) {
@@ -564,7 +1052,9 @@ fun HistoryItem(record: PeriodRecord, dateFormat: SimpleDateFormat, onDelete: ()
     }
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEdit() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isOngoing) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f) 
@@ -592,6 +1082,10 @@ fun HistoryItem(record: PeriodRecord, dateFormat: SimpleDateFormat, onDelete: ()
                     color = if (isOngoing) Color.White else MaterialTheme.colorScheme.onSecondaryContainer,
                     fontWeight = FontWeight.Bold
                 )
+            }
+
+            IconButton(onClick = onEdit) {
+                Icon(Icons.Default.Edit, contentDescription = "修改", tint = MaterialTheme.colorScheme.primary)
             }
 
             IconButton(onClick = onDelete) {

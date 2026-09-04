@@ -1,1 +1,4 @@
 /build
+/release
+ActivationSecret.kt
+**/ActivationSecret.kt

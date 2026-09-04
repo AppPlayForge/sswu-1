@@ -9,26 +9,19 @@ import com.example.myTools.birthday.BirthdayManager
 import com.example.myTools.birthday.BirthdayRecord
 import com.example.myTools.period.PeriodDataManager
 import com.example.myTools.period.PeriodRecord
-import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import java.util.*
 
 object DataManagementUtils {
     private const val PREF_NAME = "activation_prefs"
     private const val KEY_ACTIVATION_CODE = "activation_code"
-    
-    // 激活邏輯：根據設備 ID 生成
-    private const val SALT = "SSWU_SALT_2026"
 
     fun getDeviceId(context: Context): String {
         return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "UNKNOWN"
     }
 
-    private fun generateValidCode(deviceId: String): String {
-        val input = deviceId + SALT
-        val hash = MessageDigest.getInstance("MD5").digest(input.toByteArray())
-        val hex = hash.joinToString("") { "%02x".format(it) }.uppercase()
-        return "SSWU-${hex.take(8)}-${hex.takeLast(4)}"
+    fun generateValidCode(deviceId: String): String {
+        return ActivationSecret.generateValidCode(deviceId)
     }
 
     fun isActivated(context: Context): Boolean {

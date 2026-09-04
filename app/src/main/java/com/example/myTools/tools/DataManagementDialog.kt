@@ -1,6 +1,10 @@
 package com.example.myTools.tools
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -8,21 +12,23 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
 
 @Composable
 fun DataManagementDialog(onDismiss: () -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current
     var showActivationDialog by remember { mutableStateOf(false) }
     var activationCode by remember { mutableStateOf("") }
     var isActivated by remember { mutableStateOf(DataManagementUtils.isActivated(context)) }
@@ -139,7 +145,6 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
 
     if (showActivationDialog) {
         val deviceId = DataManagementUtils.getDeviceId(context)
-        val clipboardManager = LocalClipboardManager.current
 
         AlertDialog(
             onDismissRequest = { showActivationDialog = false },
@@ -147,7 +152,32 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
             text = {
                 Column {
                     Text(
-                        text = "請輸入您的激活碼（一機一碼）。如需購買請通過郵件聯係作者：sswuss@outlook.com\n價格：$1.3 USD / $9 HKD / ￥9 CNY",
+                        text = "請輸入您的激活碼（一機一碼）。如需購買請通過郵件聯係作者：",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    
+                    TextButton(
+                        onClick = { sendActivationEmail(context, deviceId) },
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 2.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = "發送郵件",
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "sswuss@outlook.com",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.primary,
+                                fontWeight = FontWeight.Bold,
+                                textDecoration = TextDecoration.Underline
+                            )
+                        )
+                    }
+
+                    Text(
+                        text = "價格：$1.3 USD / $9 HKD / ￥9 CNY",
                         style = MaterialTheme.typography.bodyMedium
                     )
                     
@@ -159,7 +189,8 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
                             Text(deviceId, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                         }
                         IconButton(onClick = { 
-                            clipboardManager.setText(AnnotatedString(deviceId))
+                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            clipboard.setPrimaryClip(ClipData.newPlainText("Device ID", deviceId))
                             Toast.makeText(context, "已複製設備 ID", Toast.LENGTH_SHORT).show()
                         }) {
                             Icon(Icons.Default.ContentCopy, contentDescription = "複製", modifier = Modifier.size(16.dp))
@@ -196,5 +227,23 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
                 }
             }
         )
+    }
+}
+
+private fun sendActivationEmail(context: Context, deviceId: String) {
+    val email = "sswuss@outlook.com"
+    val subject = "購買激活碼"
+    val body = "作者你好，\n\n我想購買激活服務，我的設備 ID 是：\n$deviceId\n\n謝謝！"
+    
+    val uri = "mailto:$email?subject=${Uri.encode(subject)}&body=${Uri.encode(body)}".toUri()
+    val intent = Intent(Intent.ACTION_SENDTO, uri).apply {
+        putExtra(Intent.EXTRA_SUBJECT, subject)
+        putExtra(Intent.EXTRA_TEXT, body)
+    }
+    
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, "未找到郵件應用，請手動發送郵件至 $email", Toast.LENGTH_LONG).show()
     }
 }

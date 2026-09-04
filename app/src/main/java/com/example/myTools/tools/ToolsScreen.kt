@@ -13,6 +13,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +34,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -44,6 +50,8 @@ import com.example.myTools.luopan.LuopanScreen
 import com.example.myTools.period.PeriodTrackerScreen
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.theme.AppThemeScheme
+import java.text.SimpleDateFormat
+import java.util.*
 
 sealed class Tool(val title: String, val icon: ImageVector) {
     object Luopan : Tool("羅盤", Icons.Default.Explore)
@@ -63,6 +71,9 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     var showDataManagementDialog by rememberSaveable { mutableStateOf(false) }
+    var versionClickCount by remember { mutableIntStateOf(0) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
+    var showGeneratorDialog by remember { mutableStateOf(false) }
     var menuExpanded by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val view = LocalView.current
@@ -81,7 +92,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         insetsController.isAppearanceLightStatusBars = shouldShowBottomBar
     }
 
-    val isAnyDialogOpen = showSettingsDialog || showThemeDialog || selectedTool == Tool.Support.title
+    val isAnyDialogOpen = showSettingsDialog || showThemeDialog || showDataManagementDialog || showPasswordDialog || showGeneratorDialog || selectedTool == Tool.Support.title
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
@@ -97,6 +108,268 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
 
     if (showDataManagementDialog) {
         DataManagementDialog(onDismiss = { showDataManagementDialog = false })
+    }
+
+    if (showPasswordDialog) {
+        var passwordInput by remember { mutableStateOf("") }
+        
+        AlertDialog(
+            onDismissRequest = { showPasswordDialog = false },
+            title = { Text("開發者驗證", fontWeight = FontWeight.Bold) },
+            text = {
+                Column {
+                    Text("請輸入密碼解鎖激活碼生成器：", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(12.dp))
+                    TextField(
+                        value = passwordInput,
+                        onValueChange = { passwordInput = it },
+                        label = { Text("密碼") },
+                        singleLine = true,
+                        visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (ActivationSecret.verifyPassword(passwordInput)) {
+                        showPasswordDialog = false
+                        showGeneratorDialog = true
+                    } else {
+                        Toast.makeText(context, "密碼錯誤", Toast.LENGTH_SHORT).show()
+                    }
+                }) {
+                    Text("確認")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPasswordDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showGeneratorDialog) {
+        var devDeviceId by remember { mutableStateOf("") }
+        var generatedCode by remember { mutableStateOf("") }
+        var historyList by remember { mutableStateOf(ActivationSecret.getHistory(context)) }
+
+        Dialog(
+            onDismissRequest = { showGeneratorDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .fillMaxHeight(0.85f),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+                elevation = CardDefaults.cardElevation(12.dp)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(20.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "激活碼生成器",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        IconButton(onClick = { showGeneratorDialog = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "關閉")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("輸入目標設備 ID 生成激活碼：", style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = devDeviceId,
+                            onValueChange = { devDeviceId = it },
+                            label = { Text("設備 ID") },
+                            singleLine = true,
+                            trailingIcon = {
+                                if (devDeviceId.isNotEmpty()) {
+                                    IconButton(onClick = { devDeviceId = "" }) {
+                                        Icon(Icons.Default.Clear, contentDescription = "清空")
+                                    }
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        TextButton(onClick = {
+                            devDeviceId = DataManagementUtils.getDeviceId(context)
+                        }) {
+                            Text("帶入本機")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = {
+                            if (devDeviceId.isNotBlank()) {
+                                val trimmedId = devDeviceId.trim()
+                                generatedCode = DataManagementUtils.generateValidCode(trimmedId)
+                                ActivationSecret.saveHistory(context, trimmedId, generatedCode)
+                                historyList = ActivationSecret.getHistory(context)
+                            } else {
+                                Toast.makeText(context, "請輸入設備 ID", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("生成激活碼")
+                    }
+
+                    if (generatedCode.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text("當前生成的激活碼：", style = MaterialTheme.typography.labelMedium)
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    SelectionContainer(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            generatedCode,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                    IconButton(onClick = {
+                                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                        val clip = ClipData.newPlainText("Activation Code", generatedCode)
+                                        clipboard.setPrimaryClip(clip)
+                                        Toast.makeText(context, "已複製激活碼", Toast.LENGTH_SHORT).show()
+                                    }) {
+                                        Icon(Icons.Default.ContentCopy, contentDescription = "複製", modifier = Modifier.size(18.dp))
+                                    }
+                                }
+
+                                if (devDeviceId.trim() == DataManagementUtils.getDeviceId(context)) {
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    OutlinedButton(
+                                        onClick = {
+                                            if (DataManagementUtils.activate(context, generatedCode)) {
+                                                Toast.makeText(context, "本機已成功激活！", Toast.LENGTH_SHORT).show()
+                                            } else {
+                                                Toast.makeText(context, "激活失敗", Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("直接激活本機")
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "生成歷史記錄 (${historyList.size})",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (historyList.isNotEmpty()) {
+                            TextButton(onClick = {
+                                ActivationSecret.clearHistory(context)
+                                historyList = emptyList()
+                            }) {
+                                Text("清空歷史", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    if (historyList.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("暫無生成記錄", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(historyList) { item ->
+                                val dateStr = remember(item.timestamp) {
+                                    SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.timestamp))
+                                }
+                                Card(
+                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = dateStr,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Spacer(modifier = Modifier.height(2.dp))
+                                            Text(
+                                                text = "設備 ID: ${item.deviceId}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                            Text(
+                                                text = "激活碼: ${item.code}",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                        IconButton(onClick = {
+                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                            val clip = ClipData.newPlainText("Activation Code", item.code)
+                                            clipboard.setPrimaryClip(clip)
+                                            Toast.makeText(context, "已複製激活碼", Toast.LENGTH_SHORT).show()
+                                        }) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = "複製", modifier = Modifier.size(16.dp))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     BackHandler(enabled = selectedTool != null) {
@@ -196,8 +469,16 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                     HorizontalDivider()
                                     DropdownMenuItem(
                                         text = { Text("版本號: v${BuildConfig.VERSION_NAME}") },
-                                        onClick = { },
-                                        enabled = false
+                                        onClick = {
+                                            versionClickCount++
+                                            if (versionClickCount >= 6) {
+                                                versionClickCount = 0
+                                                menuExpanded = false
+                                                showPasswordDialog = true
+                                            } else if (versionClickCount >= 3) {
+                                                Toast.makeText(context, "再點擊 ${6 - versionClickCount} 次進入開發者模式", Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
                                     )
                                 }
                             }
