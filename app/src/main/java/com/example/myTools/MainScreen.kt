@@ -1,6 +1,7 @@
 package com.example.myTools
 
 import android.app.Activity
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
@@ -84,6 +85,15 @@ fun MainScreen(initialPage: Int = 0) {
     var isBottomBarVisible by remember { mutableStateOf(true) }
     val isAppBlurred by MainActivity.isAppBlurred.collectAsState()
 
+    val isAtStartDestination = currentRoute == initialRoute || currentRoute == null
+    BackHandler(enabled = !isAtStartDestination) {
+        navController.navigate(initialRoute) {
+            popUpTo(navController.graph.startDestinationId) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -104,7 +114,7 @@ fun MainScreen(initialPage: Int = 0) {
             enterTransition = {
                 val initialIndex = getRouteIndex(initialState.destination.route)
                 val targetIndex = getRouteIndex(targetState.destination.route)
-                if (targetIndex > initialIndex) {
+                if (targetIndex >= initialIndex) {
                     slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
                 } else {
                     slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
@@ -113,7 +123,7 @@ fun MainScreen(initialPage: Int = 0) {
             exitTransition = {
                 val initialIndex = getRouteIndex(initialState.destination.route)
                 val targetIndex = getRouteIndex(targetState.destination.route)
-                if (targetIndex > initialIndex) {
+                if (targetIndex >= initialIndex) {
                     slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
                 } else {
                     slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
@@ -122,19 +132,19 @@ fun MainScreen(initialPage: Int = 0) {
             popEnterTransition = {
                 val initialIndex = getRouteIndex(initialState.destination.route)
                 val targetIndex = getRouteIndex(targetState.destination.route)
-                if (targetIndex > initialIndex) {
-                    slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
-                } else {
+                if (targetIndex <= initialIndex) {
                     slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
+                } else {
+                    slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
                 }
             },
             popExitTransition = {
                 val initialIndex = getRouteIndex(initialState.destination.route)
                 val targetIndex = getRouteIndex(targetState.destination.route)
-                if (targetIndex > initialIndex) {
-                    slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
-                } else {
+                if (targetIndex <= initialIndex) {
                     slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
+                } else {
+                    slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
                 }
             },
             modifier = Modifier

@@ -40,12 +40,12 @@ fun SearchableTopBar(
         transitionSpec = {
             if (targetState) {
                 // 進入搜索模式：從右向左滑入
-                (slideInHorizontally { width -> width } + fadeIn()) togetherWith
-                        (slideOutHorizontally { width -> -width } + fadeOut())
+                slideInHorizontally { width -> width } togetherWith
+                        slideOutHorizontally { width -> -width }
             } else {
-                // 退出搜索模式：從左向右滑入
-                (slideInHorizontally { width -> -width } + fadeIn()) togetherWith
-                        (slideOutHorizontally { width -> width } + fadeOut())
+                // 退出搜索模式 (返回)：從左向右滑入
+                slideInHorizontally { width -> -width } togetherWith
+                        slideOutHorizontally { width -> width }
             }
         },
         label = "SearchableTopBarAnimation",

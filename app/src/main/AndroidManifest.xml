@@ -30,6 +30,8 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:enableOnBackInvokedCallback="false"
+        tools:targetApi="33"
         android:theme="@style/Theme.Ruler">
         <activity
             android:name=".MainActivity"
