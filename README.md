@@ -1,4 +1,4 @@
-黃曆，吉日查詢，八字，AI算命，AI起名字，農曆生日提醒，風水羅盤，尺規，車速儀，月經記錄。
+## 黃曆，吉日查詢，記事本，農曆生日提醒，八字，AI算命，AI起名字，風水羅盤，尺規，車速儀，月經記錄。
 
 項目 minSdk 設置為 31 (Android 12)
 支持安卓12系統以上；
@@ -31,6 +31,8 @@ Copyright © 2026 AppPlayForge. All rights reserved.
 <img width="30%" alt="吉日" src="https://github.com/user-attachments/assets/82dda03a-31d5-43b2-a1cf-72564a6c5d50" />
 <img width="30%" alt="八字" src="https://github.com/user-attachments/assets/6291665c-7a9e-405b-a0ac-0c46c0a5dbbf" />
 <img width="30%" alt="Screenshot_20260829_133946" src="https://github.com/user-attachments/assets/81b49b25-90dc-406b-a29f-ce693274d3f7" />
+<img width="30%" alt="Screenshot_20260914_174020" src="https://github.com/user-attachments/assets/6a3013c6-7635-45f4-b206-49616bbaa933" />
+<img width="30%" alt="Screenshot_20260914_173933" src="https://github.com/user-attachments/assets/7caedae4-a802-4583-9942-7cea75d65e7f" />
 <img width="30%" alt="生日" src="https://github.com/user-attachments/assets/24dfa269-789d-40d6-a82a-b09c0478e798" />
 <img width="30%" alt="車速" src="https://github.com/user-attachments/assets/de3d2955-cd19-4ee0-8f66-952193b06e55" />
 <img width="30%" alt="尺規" src="https://github.com/user-attachments/assets/4607662e-9b38-40bf-842d-2d740f5c92e0" />
