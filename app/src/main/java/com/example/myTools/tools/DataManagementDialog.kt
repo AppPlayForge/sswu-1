@@ -12,7 +12,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
+import com.example.myTools.note.NoteManager
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.io.OutputStreamWriter
@@ -73,19 +78,37 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
         }
     }
 
+    // 導入單獨記事本 TXT 文件啟動器
+    val importNoteTxtLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(it)?.use { inputStream ->
+                    val reader = BufferedReader(InputStreamReader(inputStream, Charsets.UTF_8))
+                    val txt = reader.readText()
+                    val count = NoteManager.importNotesFromTxt(context, txt)
+                    Toast.makeText(context, "成功導入 $count 筆筆記！", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "導入失敗: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("數據管理", fontWeight = FontWeight.Bold) },
         text = {
             Column {
-                Text("備份與恢復您的八字、生日和月經紀錄。導出數據為高級服務，需購買激活碼。",
+                Text("備份與恢復您的八字、生日、月經及記事本紀錄。導出與導入數據為高級服務，需購買激活碼。",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Text("Excel 兼容備份 (推薦)", style = MaterialTheme.typography.labelMedium)
+                Text("全量數據備份 (八字/生日/月經/記事本)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
                 Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                     Button(
                         onClick = {
@@ -98,7 +121,9 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                     ) {
-                        Text("導出 CSV")
+                        Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("全量導出 CSV")
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
@@ -111,7 +136,50 @@ fun DataManagementDialog(onDismiss: () -> Unit) {
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("導入 CSV")
+                        Icon(Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("全量導入 CSV")
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // 單獨記事本導出/導入區域
+                Text("單獨記事本備份 (Windows TXT 格式)", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                    FilledTonalButton(
+                        onClick = {
+                            if (isActivated) {
+                                val fileName = NoteManager.exportAllNotesToDownloads(context)
+                                if (fileName != null) {
+                                    Toast.makeText(context, "已導出至下載文件夾：$fileName", Toast.LENGTH_LONG).show()
+                                } else {
+                                    Toast.makeText(context, "無筆記可導出", Toast.LENGTH_SHORT).show()
+                                }
+                            } else {
+                                showActivationDialog = true
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("導出記事本")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    FilledTonalButton(
+                        onClick = {
+                            if (isActivated) {
+                                importNoteTxtLauncher.launch(arrayOf("text/plain", "*/*"))
+                            } else {
+                                showActivationDialog = true
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.FileUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("導入記事本")
                     }
                 }
 

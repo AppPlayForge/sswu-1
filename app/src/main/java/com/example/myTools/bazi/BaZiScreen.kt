@@ -5,12 +5,13 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +29,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,9 +43,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -58,8 +58,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -67,15 +65,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.MainActivity
@@ -88,11 +84,11 @@ import com.example.myTools.ui.ThreeDIconButton
 import com.nlf.calendar.EightChar
 import com.nlf.calendar.Lunar
 import com.nlf.calendar.Solar
-import java.util.Locale
+import com.nlf.calendar.util.LunarUtil
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BaZiScreen() {
+fun BaZiScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
     var records by remember { mutableStateOf(BaZiManager.loadList(context)) }
     var showAddDialog by remember { mutableStateOf(false) }
@@ -106,11 +102,48 @@ fun BaZiScreen() {
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
+    if (onBack != null) {
+        BackHandler(enabled = !isSearchActive) {
+            onBack()
+        }
+    }
+
     val filteredRecords = remember(searchQuery, records) {
         if (searchQuery.isEmpty()) {
             records
         } else {
             records.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
+    val listState = rememberLazyListState()
+    var isFabVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(listState) {
+        var previousIndex = listState.firstVisibleItemIndex
+        var previousOffset = listState.firstVisibleItemScrollOffset
+
+        snapshotFlow {
+            Triple(listState.isScrollInProgress, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+        }.collect { (isScrollInProgress, currentIndex, currentOffset) ->
+            if (currentIndex == 0 && currentOffset == 0) {
+                isFabVisible = true
+            } else if (isScrollInProgress) {
+                if (currentIndex > previousIndex) {
+                    isFabVisible = false
+                } else if (currentIndex < previousIndex) {
+                    isFabVisible = true
+                } else {
+                    val diff = currentOffset - previousOffset
+                    if (diff > 12) {
+                        isFabVisible = false
+                    } else if (diff < -12) {
+                        isFabVisible = true
+                    }
+                }
+            }
+            previousIndex = currentIndex
+            previousOffset = currentOffset
         }
     }
 
@@ -130,6 +163,17 @@ fun BaZiScreen() {
                     onSearchActiveChange = { isSearchActive = it },
                     searchQuery = searchQuery,
                     onQueryChange = { searchQuery = it },
+                    navigationIcon = {
+                        if (onBack != null) {
+                            IconButton(onClick = onBack) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "返回",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    },
                     actions = {
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
@@ -152,7 +196,7 @@ fun BaZiScreen() {
                                     leadingIcon = { Icon(Icons.Default.CloudSync, null) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("設置") },
+                                    text = { Text("權限管理") },
                                     onClick = {
                                         menuExpanded = false
                                         showSettingsDialog = true
@@ -166,25 +210,31 @@ fun BaZiScreen() {
             }
         },
         floatingActionButton = {
-            BlurryContainer(isBlur = isAnyDialogOpen) {
-                Surface(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .combinedClickable(
-                            onClick = { showAddDialog = true }
-                        ),
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    tonalElevation = 6.dp,
-                    shadowElevation = 8.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = "添加八字",
-                            modifier = Modifier.size(36.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+            AnimatedVisibility(
+                visible = isFabVisible,
+                enter = scaleIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                exit = scaleOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) + fadeOut()
+            ) {
+                BlurryContainer(isBlur = isAnyDialogOpen) {
+                    Surface(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .combinedClickable(
+                                onClick = { showAddDialog = true }
+                            ),
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = "添加八字",
+                                modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }
@@ -207,7 +257,10 @@ fun BaZiScreen() {
                         )
                     }
                 } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
                         items(filteredRecords, key = { it.id }) { record ->
                             BaZiRecordItem(
                                 record = record,
@@ -328,15 +381,9 @@ fun BaZiRecordItem(
                     )
                 }
                 val typeStr = if (record.isLunar) "農曆" else "公曆"
+                val timeStr = "%02d:%02d".format(record.hour, record.minute)
                 Text(
-                    text = "$typeStr: ${record.year}-${record.month}-${record.day} ${
-                        String.format(
-                            Locale.getDefault(),
-                            "%02d:%02d",
-                            record.hour,
-                            record.minute
-                        )
-                    }",
+                    text = "$typeStr: ${record.year}-${record.month}-${record.day} $timeStr",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -365,17 +412,34 @@ fun BaZiDetailDialog(
     }
 
     val solar = lunar.solar
-    val solarFullStr = "${solar.year}-${
-        String.format(
-            Locale.getDefault(),
-            "%02d-%02d %02d:%02d",
-            solar.month,
-            solar.day,
-            solar.hour,
-            solar.minute
-        )
-    }"
+    val solarFullStr = "${solar.year}-%02d-%02d %02d:%02d".format(
+        solar.month,
+        solar.day,
+        solar.hour,
+        solar.minute
+    )
     val baZi = lunar.eightChar
+
+    val yearGan = baZi.yearGan
+    val yearGanWuXing = LunarUtil.WU_XING_GAN[yearGan] ?: ""
+    val shengXiao = lunar.yearShengXiaoExact
+    val ganShengXiaoStr = if (yearGanWuXing.isNotEmpty()) "$yearGanWuXing$shengXiao" else shengXiao
+
+    val yearNaYin = baZi.yearNaYin
+    val naYinWuXingChar = yearNaYin.lastOrNull()?.toString() ?: ""
+    val naYinWuXingStr = if (naYinWuXingChar.isNotEmpty()) "$yearNaYin (${naYinWuXingChar}命)" else yearNaYin
+
+    val shengXiaoWuXingStr = if ((yearGanWuXing.isNotEmpty() && naYinWuXingChar.isNotEmpty()) && yearGanWuXing != naYinWuXingChar) {
+        "$ganShengXiaoStr (天幹$yearGan$yearGanWuXing) / 納音$naYinWuXingChar$shengXiao"
+    } else if (yearGanWuXing.isNotEmpty()) {
+        "$ganShengXiaoStr ($yearGanWuXing${shengXiao}命)"
+    } else {
+        shengXiao
+    }
+
+    val dayGan = baZi.dayGan
+    val dayGanWuXing = LunarUtil.WU_XING_GAN[dayGan] ?: ""
+    val dayGanStr = "$dayGan${dayGanWuXing}日主"
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -398,7 +462,7 @@ fun BaZiDetailDialog(
                             // 諮詢 AI 按鈕
                             TextButton(onClick = {
                                 val copyText = """
-                                   你是一位精通中國傳統命理學的玄學大家，
+                                   你是一位精通中國傳統命理學的玄學大師，
                                    融合了「子平八字」、 「紫微斗數」與「奇門遁甲」三家之長。
                                    現在請為以下緣主進行深度、詳細的「綜合命書」論斷。
                                    
@@ -410,11 +474,16 @@ fun BaZiDetailDialog(
                                     出生公曆：${solar.toFullString()}
                                     出生農曆：$lunar
                                     
+                                    【命格屬性】
+                                    納音五行：$naYinWuXingStr
+                                    生肖五行：$shengXiaoWuXingStr
+                                    日幹屬性：$dayGanStr
+                                    
                                     八字四柱：
                                     年柱：${baZi.year} (${baZi.yearShiShenGan}, 納音: ${baZi.yearNaYin})
                                     月柱：${baZi.month} (${baZi.monthShiShenGan}, 納音: ${baZi.monthNaYin})
                                     日柱：${baZi.day} (日主, 納音: ${baZi.dayNaYin})
-                                    時柱：${baZi.time} (${baZi.timeShiShenGan}, 納音: ${baZi.timeWuXing})
+                                    時柱：${baZi.time} (${baZi.timeShiShenGan}, 納音: ${baZi.timeNaYin})
                                     
                                     五行分布：${baZi.yearWuXing}${baZi.monthWuXing}${baZi.dayWuXing}${baZi.timeWuXing}
                                     
@@ -476,11 +545,16 @@ fun BaZiDetailDialog(
                                     出生公曆：${solar.toFullString()}
                                     出生農曆：$lunar
                                     
+                                    【命格屬性】
+                                    納音五行：$naYinWuXingStr
+                                    生肖五行：$shengXiaoWuXingStr
+                                    日幹屬性：$dayGanStr
+                                    
                                     八字四柱：
                                     年柱：${baZi.year} (${baZi.yearShiShenGan}, 納音: ${baZi.yearNaYin})
                                     月柱：${baZi.month} (${baZi.monthShiShenGan}, 納音: ${baZi.monthNaYin})
                                     日柱：${baZi.day} (日主, 納音: ${baZi.dayNaYin})
-                                    時柱：${baZi.time} (${baZi.timeShiShenGan}, 納音: ${baZi.timeWuXing})
+                                    時柱：${baZi.time} (${baZi.timeShiShenGan}, 納音: ${baZi.timeNaYin})
                                     
                                     五行分布：${baZi.yearWuXing}${baZi.monthWuXing}${baZi.dayWuXing}${baZi.timeWuXing}
                                     
@@ -524,6 +598,9 @@ fun BaZiDetailDialog(
                             InfoRow("出生地", placeStr)
                             InfoRow("公曆出生", solarFullStr)
                             InfoRow("農曆出生", lunar.toString())
+                            InfoRow("納音五行", naYinWuXingStr)
+                            InfoRow("生肖五行", shengXiaoWuXingStr)
+                            InfoRow("日幹屬性", dayGanStr)
                         }
                     }
 

@@ -194,7 +194,7 @@ fun LunarBirthdayScreen() {
                                     leadingIcon = { Icon(Icons.Default.CloudSync, null) }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("設置") },
+                                    text = { Text("權限管理") },
                                     onClick = {
                                         menuExpanded = false
                                         showSettingsDialog = true

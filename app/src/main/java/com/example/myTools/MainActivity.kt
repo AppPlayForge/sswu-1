@@ -2,6 +2,7 @@ package com.example.myTools
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -29,9 +30,12 @@ class MainActivity : ComponentActivity() {
         private val _isAppBlurred = MutableStateFlow(false)
         val isAppBlurred = _isAppBlurred.asStateFlow()
 
+        private val _externalTxtUri = MutableStateFlow<Uri?>(null)
+        val externalTxtUri = _externalTxtUri.asStateFlow()
+
         fun updateTheme(context: Context, scheme: AppThemeScheme) {
             _themeScheme.value = scheme
-            context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            context.getSharedPreferences("prefs", MODE_PRIVATE)
                 .edit()
                 .putString("theme_scheme", scheme.name)
                 .apply()
@@ -39,7 +43,7 @@ class MainActivity : ComponentActivity() {
 
         fun updateDarkMode(context: Context, config: DarkModeConfig) {
             _darkModeConfig.value = config
-            context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+            context.getSharedPreferences("prefs", MODE_PRIVATE)
                 .edit()
                 .putString("dark_mode", config.name)
                 .apply()
@@ -48,13 +52,17 @@ class MainActivity : ComponentActivity() {
         fun setAppBlurred(isBlurred: Boolean) {
             _isAppBlurred.value = isBlurred
         }
+
+        fun clearExternalTxtUri() {
+            _externalTxtUri.value = null
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         // 初始化主題與深色模式
-        val prefs = getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("prefs", MODE_PRIVATE)
         
         val savedTheme = prefs.getString("theme_scheme", AppThemeScheme.DYNAMIC.name)
         _themeScheme.value = AppThemeScheme.valueOf(savedTheme ?: AppThemeScheme.DYNAMIC.name)
@@ -66,6 +74,8 @@ class MainActivity : ComponentActivity() {
 
         // 獲取啟動時的頁面索引
         currentPage = intent.getIntExtra("target_page", 0)
+
+        handleExternalFileIntent(intent)
 
         setContent {
             val currentTheme by themeScheme.collectAsState()
@@ -85,6 +95,17 @@ class MainActivity : ComponentActivity() {
         val targetPage = intent.getIntExtra("target_page", -1)
         if (targetPage != -1) {
             currentPage = targetPage
+        }
+        handleExternalFileIntent(intent)
+    }
+
+    private fun handleExternalFileIntent(intent: Intent?) {
+        if (intent == null) return
+        val action = intent.action
+        val data = intent.data
+        if (data != null && (action == Intent.ACTION_VIEW || action == Intent.ACTION_EDIT || action == Intent.ACTION_SEND)) {
+            _externalTxtUri.value = data
+            currentPage = 1 // 1 是記事本頁面 (BottomBarScreen.Note)
         }
     }
 }

@@ -7,6 +7,8 @@ import com.example.myTools.bazi.BaZiManager
 import com.example.myTools.bazi.BaZiRecord
 import com.example.myTools.birthday.BirthdayManager
 import com.example.myTools.birthday.BirthdayRecord
+import com.example.myTools.note.NoteManager
+import com.example.myTools.note.NoteRecord
 import com.example.myTools.period.PeriodDataManager
 import com.example.myTools.period.PeriodRecord
 import java.text.SimpleDateFormat
@@ -27,13 +29,14 @@ object DataManagementUtils {
     fun isActivated(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val code = prefs.getString(KEY_ACTIVATION_CODE, "") ?: ""
-        return code == generateValidCode(getDeviceId(context))
+        return ActivationSecret.verifyCode(getDeviceId(context), code)
     }
 
     fun activate(context: Context, code: String): Boolean {
-        if (code == generateValidCode(getDeviceId(context))) {
+        val trimmedCode = code.trim()
+        if (ActivationSecret.verifyCode(getDeviceId(context), trimmedCode)) {
             val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
-            prefs.edit { putString(KEY_ACTIVATION_CODE, code) }
+            prefs.edit { putString(KEY_ACTIVATION_CODE, trimmedCode) }
             return true
         }
         return false
@@ -76,6 +79,15 @@ object DataManagementUtils {
             val duration = if (r.endDate != null) ((r.endDate - r.startDate) / (24 * 60 * 60 * 1000) + 1).toString() else ""
             sb.append("$start,$end,$duration\n")
         }
+        sb.append("\n")
+
+        // --- 筆記章節 ---
+        val noteList = NoteManager.loadList(context)
+        sb.append("# SECTION:NOTE\n")
+        sb.append("ID,標題,內容,更新時間,創建時間,是否置頂,顏色\n")
+        noteList.forEach { r ->
+            sb.append("${r.id},${escapeCsv(r.title)},${escapeCsv(r.content)},${r.updatedAt},${r.createdAt},${r.isPinned},${r.colorHex ?: ""}\n")
+        }
 
         return sb.toString()
     }
@@ -89,6 +101,7 @@ object DataManagementUtils {
             val baziList = mutableListOf<BaZiRecord>()
             val birthdayList = mutableListOf<BirthdayRecord>()
             val periodList = mutableListOf<PeriodRecord>()
+            val noteList = mutableListOf<NoteRecord>()
             
             var currentSection = ""
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
@@ -146,6 +159,19 @@ object DataManagementUtils {
                             periodList.add(PeriodRecord(start, end))
                         }
                     }
+                    "NOTE" -> {
+                        if (parts.size >= 5) {
+                            noteList.add(NoteRecord(
+                                id = parts[0].toLongOrNull() ?: System.currentTimeMillis(),
+                                title = parts[1],
+                                content = parts[2],
+                                updatedAt = parts[3].toLongOrNull() ?: System.currentTimeMillis(),
+                                createdAt = parts.getOrNull(4)?.toLongOrNull() ?: System.currentTimeMillis(),
+                                isPinned = parts.getOrNull(5)?.toBoolean() ?: false,
+                                colorHex = parts.getOrNull(6)?.ifBlank { null }
+                            ))
+                        }
+                    }
                 }
             }
 
@@ -156,6 +182,7 @@ object DataManagementUtils {
                 birthdayList.forEach { BirthdayManager.scheduleBirthdayAlarm(context, it) }
             }
             if (periodList.isNotEmpty()) PeriodDataManager(context).saveRecords(periodList)
+            if (noteList.isNotEmpty()) NoteManager.saveList(context, noteList)
 
             true
         } catch (e: Exception) {

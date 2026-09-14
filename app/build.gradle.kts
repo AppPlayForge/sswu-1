@@ -1,3 +1,12 @@
+import java.util.Properties
+
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.exists()) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+
 plugins {
     alias(libs.plugins.android.application)
     // alias(libs.plugins.kotlin.android) // AGP 9.0+ 已內建支持，無需此插件
@@ -13,7 +22,12 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "1.6.2"
+        versionName = "1.7.2"
+
+        val devPassword = localProperties.getProperty("DEV_PASSWORD") ?: ""
+        val devRsaPrivateExponent = localProperties.getProperty("DEV_RSA_PRIVATE_EXPONENT") ?: ""
+        buildConfigField("String", "DEV_PASSWORD", "\"$devPassword\"")
+        buildConfigField("String", "DEV_RSA_PRIVATE_EXPONENT", "\"$devRsaPrivateExponent\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
@@ -37,10 +51,6 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-
-    // 在 AGP 9.0+ 中，若使用了內置 Kotlin 支持，
-    // 通常不再需要顯式定義 kotlinOptions 或 compilerOptions，
-    // 它會繼承 compileOptions 的設置。
 
     buildFeatures {
         compose = true

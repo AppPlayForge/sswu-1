@@ -44,6 +44,7 @@ import androidx.core.view.WindowCompat
 import com.example.myTools.BuildConfig
 import com.example.myTools.MainActivity
 import com.example.myTools.R
+import com.example.myTools.bazi.BaZiScreen
 import com.example.myTools.caliper.CaliperScreen
 import com.example.myTools.carspeed.CarSpeedScreen
 import com.example.myTools.luopan.LuopanScreen
@@ -54,6 +55,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 sealed class Tool(val title: String, val icon: ImageVector) {
+    object BaZi : Tool("八字", Icons.Default.AutoFixHigh)
     object Luopan : Tool("羅盤", Icons.Default.Explore)
     object Caliper : Tool("尺規", Icons.Default.Straighten)
     object CarSpeed : Tool("車速", Icons.Default.Speed)
@@ -84,7 +86,8 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         val shouldShowBottomBar = selectedTool != Tool.Luopan.title && 
                                  selectedTool != Tool.CarSpeed.title && 
                                  selectedTool != Tool.Caliper.title &&
-                                 selectedTool != Tool.PeriodTracker.title
+                                 selectedTool != Tool.PeriodTracker.title &&
+                                 selectedTool != Tool.BaZi.title
         
         onToggleBottomBar(shouldShowBottomBar)
         
@@ -307,9 +310,17 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                         onClick = {
                             if (devDeviceId.isNotBlank()) {
                                 val trimmedId = devDeviceId.trim()
-                                generatedCode = DataManagementUtils.generateValidCode(trimmedId)
-                                ActivationSecret.saveHistory(context, trimmedId, generatedCode)
-                                historyList = ActivationSecret.getHistory(context)
+                                try {
+                                    generatedCode = DataManagementUtils.generateValidCode(trimmedId)
+                                    if (generatedCode.isNotEmpty()) {
+                                        ActivationSecret.saveHistory(context, trimmedId, generatedCode)
+                                        historyList = ActivationSecret.getHistory(context)
+                                    } else {
+                                        Toast.makeText(context, "生成失敗，請檢查開發者金鑰配置", Toast.LENGTH_SHORT).show()
+                                    }
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, e.message ?: "生成失敗", Toast.LENGTH_SHORT).show()
+                                }
                             } else {
                                 Toast.makeText(context, "請輸入設備ID", Toast.LENGTH_SHORT).show()
                             }
@@ -571,6 +582,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                     ThemeEntrySection(onClick = { showThemeDialog = true })
                     
                     val firstGroup = listOf(
+                        Tool.BaZi,
                         Tool.Luopan,
                         Tool.Caliper,
                         Tool.CarSpeed,
@@ -670,6 +682,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
     } else {
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
             when (selectedTool) {
+                Tool.BaZi.title -> BaZiScreen(onBack = { selectedTool = null })
                 Tool.Luopan.title -> LuopanScreen(onBack = { selectedTool = null })
                 Tool.Caliper.title -> CaliperScreen(onBack = { selectedTool = null })
                 Tool.CarSpeed.title -> CarSpeedScreen(onBack = { selectedTool = null })

@@ -24,13 +24,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.HomeRepairService
-import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.HomeRepairService
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -67,9 +67,9 @@ sealed class BottomBarScreen(
         "almanac", "黃曆", 
         Icons.Filled.CalendarMonth, Icons.Outlined.CalendarMonth
     )
-    data object BaZi : BottomBarScreen(
-        "bazi", "八字", 
-        Icons.Filled.AutoFixHigh, Icons.Outlined.AutoFixHigh
+    data object Note : BottomBarScreen(
+        "note", "記事本", 
+        Icons.Filled.Description, Icons.Outlined.Description
     )
     data object Birthday : BottomBarScreen(
         "birthday", "生日", 
@@ -86,7 +86,7 @@ sealed class BottomBarScreen(
 fun MainBottomBarDynamic(navController: NavHostController) {
     val screens = listOf(
         BottomBarScreen.Almanac,
-        BottomBarScreen.BaZi,
+        BottomBarScreen.Note,
         BottomBarScreen.Birthday,
         BottomBarScreen.Tools
     )

@@ -30,15 +30,15 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.myTools.almanac.AlmanacScreen
-import com.example.myTools.bazi.BaZiScreen
 import com.example.myTools.birthday.LunarBirthdayScreen
+import com.example.myTools.note.NoteScreen
 import com.example.myTools.tools.ToolsScreen
 import com.example.myTools.ui.BlurryContainer
 
 private fun getRouteIndex(route: String?): Int {
     return when (route) {
         BottomBarScreen.Almanac.route -> 0
-        BottomBarScreen.BaZi.route -> 1
+        BottomBarScreen.Note.route -> 1
         BottomBarScreen.Birthday.route -> 2
         BottomBarScreen.Tools.route -> 3
         else -> 0
@@ -55,7 +55,7 @@ fun MainScreen(initialPage: Int = 0) {
     val initialRoute = remember(initialPage) {
         when (initialPage) {
             0 -> BottomBarScreen.Almanac.route
-            1 -> BottomBarScreen.BaZi.route
+            1 -> BottomBarScreen.Note.route
             2 -> BottomBarScreen.Birthday.route
             3 -> BottomBarScreen.Tools.route
             else -> BottomBarScreen.Almanac.route
@@ -154,8 +154,8 @@ fun MainScreen(initialPage: Int = 0) {
             composable(BottomBarScreen.Almanac.route) {
                 AlmanacScreen(modifier = Modifier.fillMaxSize())
             }
-            composable(BottomBarScreen.BaZi.route) {
-                BaZiScreen()
+            composable(BottomBarScreen.Note.route) {
+                NoteScreen()
             }
             composable(BottomBarScreen.Birthday.route) {
                 LunarBirthdayScreen()
