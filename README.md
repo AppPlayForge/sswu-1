@@ -1,10 +1,12 @@
 ## 黃曆，吉日查詢，記事本，農曆生日提醒，八字，AI算命，AI起名字，風水羅盤，尺規，車速儀，月經記錄。
+
 項目 minSdk 設置為 31 (Android 12)
 支持安卓12系統以上；
 點擊本網頁右邊的Releases打開下載頁面，請選擇最新版本(刪除舊版后安裝)；
 
 因未發佈到應用市場，部分手機會有風險提示。
 僅限於內部測試，禁止商業用途。
+
 ---
 ### 版權所有 (Copyright)
 Copyright © 2026 AppPlayForge. All rights reserved.
@@ -17,7 +19,6 @@ Copyright © 2026 AppPlayForge. All rights reserved.
 ### 商業用途聲明 (Commercial Use)
 **嚴禁在未經授權的情況下將本項目直接用於商業營利活動。**
 如果你計劃將本項目的代碼用於商業產品，或者希望獲得非 GPL 協議的授權（如閉源商業授權），請務必通過以下方式聯繫我進行協商：
-
 - **Email**: sswuss@outlook.com
 - **GitHub Issues**: 提交一個 Issue 說明你的意圖
 
