@@ -1,7 +1,7 @@
 package com.example.myTools.carspeed
 
 import android.content.Context
-
+import androidx.core.content.edit
 
 //將所有與 SharedPreferences(共享偏好設定) 相關的讀寫操作封裝起來
 class AppPreferences(context: Context) {
@@ -12,6 +12,9 @@ class AppPreferences(context: Context) {
         private const val KEY_HELP_DIALOG_SHOWN = "help_dialog_shown"
         // 為螢幕恆亮模式定義一個 Key
         private const val KEY_WAKE_LOCK_MODE = "wake_lock_mode"
+        // 為底欄標籤定義一個 Key
+        private const val KEY_BOTTOM_BAR_SLOTS = "bottom_bar_slots"
+        val DEFAULT_BOTTOM_BAR_SLOTS = listOf("almanac", "note", "birthday")
     }
 
     // 獲取 SharedPreferences 實例
@@ -30,14 +33,13 @@ class AppPreferences(context: Context) {
      * 將新功能提示的狀態標記為「已顯示」。
      */
     fun setHelpDialogShown() {
-        sharedPreferences.edit().putBoolean(KEY_HELP_DIALOG_SHOWN, false).apply()
+        sharedPreferences.edit { putBoolean(KEY_HELP_DIALOG_SHOWN, false) }
     }
-
 
     // <<< 新增：一個函數，用於保存螢幕恆亮模式
     fun saveWakeLockMode(mode: WakeLockMode) {
         // SharedPreferences 不能直接存 Enum，但可以存它的名字 (String)
-        sharedPreferences.edit().putString(KEY_WAKE_LOCK_MODE, mode.name).apply()
+        sharedPreferences.edit { putString(KEY_WAKE_LOCK_MODE, mode.name) }
     }
 
     // <<< 新增：一個函數，用於讀取螢幕恆亮模式
@@ -47,9 +49,25 @@ class AppPreferences(context: Context) {
         return try {
             // 將字串轉換回 Enum
             WakeLockMode.valueOf(modeName ?: WakeLockMode.OFF.name)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // 如果轉換失敗（例如儲存的值損壞），返回安全的預設值
             WakeLockMode.OFF
         }
+    }
+
+    // <<< 新增：保存底欄自定義項目 (前3個項目)
+    fun saveBottomBarSlots(slots: List<String>) {
+        val stringValue = slots.take(3).joinToString(",")
+        sharedPreferences.edit { putString(KEY_BOTTOM_BAR_SLOTS, stringValue) }
+    }
+
+    // <<< 新增：獲取底欄自定義項目 (前3個項目，預設為 almanac, note, birthday)
+    fun getBottomBarSlots(): List<String> {
+        val saved = sharedPreferences.getString(KEY_BOTTOM_BAR_SLOTS, null)
+        if (saved.isNullOrEmpty()) {
+            return DEFAULT_BOTTOM_BAR_SLOTS
+        }
+        val list = saved.split(",").mapNotNull { s -> s.trim().takeIf { it.isNotEmpty() } }
+        return if (list.size == 3) list else DEFAULT_BOTTOM_BAR_SLOTS
     }
 }

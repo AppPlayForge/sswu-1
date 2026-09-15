@@ -431,7 +431,11 @@ fun AddBaZiDialog(
                                     minute = minuteInt!!,
                                     province = province.text,
                                     city = city.text,
-                                    isLunar = isLunar
+                                    isLunar = isLunar,
+                                    isLeapMonth = initialRecord?.isLeapMonth ?: false,
+                                    aiAnalysis = initialRecord?.aiAnalysis,
+                                    isPinned = initialRecord?.isPinned ?: false,
+                                    tags = initialRecord?.tags ?: emptyList()
                                 )
                                 onSave(record)
                             },

@@ -1,6 +1,11 @@
 package com.example.myTools.almanac
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.content.Intent
 import android.view.HapticFeedbackConstants
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,6 +42,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.outlined.Eco
 import androidx.compose.material3.*
@@ -49,6 +55,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -56,12 +63,16 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.MainActivity
+import com.example.myTools.R
 import com.example.myTools.auspicious.AuspiciousQueryScreen
 import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.tools.DataManagementDialog
 import com.example.myTools.tools.SupportScreen
 import com.example.myTools.ui.BlurryContainer
 import com.example.myTools.ui.CommonTopBar
+import com.example.myTools.ui.DataManagementMenuItem
+import com.example.myTools.ui.ShareAppMenuItem
+import com.example.myTools.ui.SupportMenuItem
 import com.nlf.calendar.Lunar
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -150,15 +161,8 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
     Scaffold(
         topBar = {
             BlurryContainer(isBlur = isAnyDialogOpen) {
-                CenterAlignedTopAppBar(
-                    title = { 
-                        Text(
-                            text = "黃曆", 
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.titleLarge
-                        ) 
-                    },
+                CommonTopBar(
+                    title = "黃曆",
                     actions = {
                         Box {
                             IconButton(onClick = { menuExpanded = true }) {
@@ -172,36 +176,24 @@ fun AlmanacScreen(modifier: Modifier = Modifier) {
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("數據管理") },
+                                DataManagementMenuItem(
                                     onClick = {
                                         menuExpanded = false
                                         showDataManagementDialog = true
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.CloudSync, null) }
+                                    }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("權限管理") },
-                                    onClick = {
-                                        menuExpanded = false
-                                        showSettingsDialog = true
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                ShareAppMenuItem(
+                                    onDismissRequest = { menuExpanded = false }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("打賞支持") },
+                                SupportMenuItem(
                                     onClick = {
                                         menuExpanded = false
                                         showSupportScreen = true
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.VolunteerActivism, null) }
+                                    }
                                 )
                             }
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    }
                 )
             }
         },

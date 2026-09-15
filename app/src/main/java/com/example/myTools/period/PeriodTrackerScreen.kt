@@ -42,6 +42,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.tools.DataManagementDialog
+import com.example.myTools.ui.AppSettingsMenuItem
+import com.example.myTools.ui.CommonTopBar
+import com.example.myTools.ui.DataManagementMenuItem
+import com.example.myTools.ui.ShareAppMenuItem
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -157,67 +161,59 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
     }
 
     Scaffold(
-        containerColor = Color.Transparent
+        containerColor = Color.Transparent,
+        topBar = {
+            CommonTopBar(
+                title = "月經記錄器",
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack, 
+                            contentDescription = "返回",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                },
+                actions = {
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                Icons.Default.MoreVert, 
+                                contentDescription = "更多",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            DataManagementMenuItem(
+                                onClick = {
+                                    menuExpanded = false
+                                    showDataManagementDialog = true
+                                }
+                            )
+                            AppSettingsMenuItem(
+                                text = "設置",
+                                onClick = {
+                                    menuExpanded = false
+                                    showSettingsDialog = true
+                                }
+                            )
+                            ShareAppMenuItem(
+                                onDismissRequest = { menuExpanded = false }
+                            )
+                        }
+                    }
+                }
+            )
+        }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            // 自定義頂部導航行 (取代 TopBar)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        Icons.AutoMirrored.Filled.ArrowBack, 
-                        contentDescription = "返回",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
-                Text(
-                    text = "月經記錄器", 
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                Box {
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            Icons.Default.MoreVert, 
-                            contentDescription = "更多",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text("數據管理") },
-                            onClick = {
-                                menuExpanded = false
-                                showDataManagementDialog = true
-                            },
-                            leadingIcon = { Icon(Icons.Default.CloudSync, null) }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("設置") },
-                            onClick = {
-                                menuExpanded = false
-                                showSettingsDialog = true
-                            },
-                            leadingIcon = { Icon(Icons.Default.Settings, null) }
-                        )
-                    }
-                }
-            }
 
             // 可滑動內容區域 (包含動態跑馬燈、日曆卡片、歷史記錄)
             LazyColumn(

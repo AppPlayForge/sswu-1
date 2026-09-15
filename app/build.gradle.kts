@@ -22,7 +22,7 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "1.7.2"
+        versionName = "2.0.0"
 
         val devPassword = localProperties.getProperty("DEV_PASSWORD") ?: ""
         val devRsaPrivateExponent = localProperties.getProperty("DEV_RSA_PRIVATE_EXPONENT") ?: ""

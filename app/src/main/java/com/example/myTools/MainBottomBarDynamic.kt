@@ -24,14 +24,24 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.HomeRepairService
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.outlined.AutoFixHigh
 import androidx.compose.material.icons.outlined.Cake
 import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.HomeRepairService
+import androidx.compose.material.icons.outlined.Speed
+import androidx.compose.material.icons.outlined.Straighten
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
@@ -73,23 +83,55 @@ sealed class BottomBarScreen(
     )
     data object Birthday : BottomBarScreen(
         "birthday", "生日", 
-        Icons.Filled.Cake, Icons.Outlined.Cake,
-        badgeCount = null // 移除示例 Badge
+        Icons.Filled.Cake, Icons.Outlined.Cake
+    )
+    data object BaZi : BottomBarScreen(
+        "bazi", "八字", 
+        Icons.Filled.AutoFixHigh, Icons.Outlined.AutoFixHigh
+    )
+    data object Luopan : BottomBarScreen(
+        "luopan", "羅盤", 
+        Icons.Filled.Explore, Icons.Outlined.Explore
+    )
+    data object Caliper : BottomBarScreen(
+        "caliper", "尺規", 
+        Icons.Filled.Straighten, Icons.Outlined.Straighten
+    )
+    data object CarSpeed : BottomBarScreen(
+        "carspeed", "車速", 
+        Icons.Filled.Speed, Icons.Outlined.Speed
+    )
+    data object PeriodTracker : BottomBarScreen(
+        "period", "月經記錄", 
+        Icons.Filled.CalendarToday, Icons.Outlined.CalendarToday
     )
     data object Tools : BottomBarScreen(
         "tools", "工具", 
         Icons.Filled.HomeRepairService, Icons.Outlined.HomeRepairService
     )
+
+    companion object {
+        val ALL_CUSTOMIZABLE = listOf(
+            Almanac, Note, Birthday, BaZi, Luopan, Caliper, CarSpeed, PeriodTracker
+        )
+
+        fun fromRoute(route: String?): BottomBarScreen {
+            return ALL_CUSTOMIZABLE.firstOrNull { it.route == route }
+                ?: if (route == Tools.route) Tools else Almanac
+        }
+    }
 }
 
 @Composable
-fun MainBottomBarDynamic(navController: NavHostController) {
-    val screens = listOf(
+fun MainBottomBarDynamic(
+    navController: NavHostController,
+    screens: List<BottomBarScreen> = listOf(
         BottomBarScreen.Almanac,
         BottomBarScreen.Note,
         BottomBarScreen.Birthday,
         BottomBarScreen.Tools
     )
+) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 

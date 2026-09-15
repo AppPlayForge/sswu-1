@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
@@ -47,9 +48,12 @@ import androidx.core.content.ContextCompat
 import com.example.myTools.MainActivity
 import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.tools.DataManagementDialog
+import com.example.myTools.ui.AppSettingsMenuItem
 import com.example.myTools.ui.BlurryContainer
+import com.example.myTools.ui.DataManagementMenuItem
 import com.example.myTools.ui.DeleteConfirmDialog
 import com.example.myTools.ui.SearchableTopBar
+import com.example.myTools.ui.ShareAppMenuItem
 
 
 /*
@@ -185,21 +189,20 @@ fun LunarBirthdayScreen() {
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
-                                DropdownMenuItem(
-                                    text = { Text("數據管理") },
+                                DataManagementMenuItem(
                                     onClick = {
                                         menuExpanded = false
                                         showDataManagementDialog = true
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.CloudSync, null) }
+                                    }
                                 )
-                                DropdownMenuItem(
-                                    text = { Text("權限管理") },
+                                AppSettingsMenuItem(
                                     onClick = {
                                         menuExpanded = false
                                         showSettingsDialog = true
-                                    },
-                                    leadingIcon = { Icon(Icons.Default.Settings, null) }
+                                    }
+                                )
+                                ShareAppMenuItem(
+                                    onDismissRequest = { menuExpanded = false }
                                 )
                             }
                         }

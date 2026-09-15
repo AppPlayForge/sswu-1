@@ -12,31 +12,94 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.Apps
+import androidx.compose.material.icons.filled.AutoFixHigh
+import androidx.compose.material.icons.filled.Cake
+import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Explore
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.OndemandVideo
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.PinDrop
+import androidx.compose.material.icons.filled.Speed
+import com.example.myTools.carspeed.AppPreferences
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Tune
+import androidx.compose.material.icons.filled.ViewCompact
+import androidx.compose.material.icons.filled.VolunteerActivism
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.net.toUri
@@ -44,32 +107,48 @@ import androidx.core.view.WindowCompat
 import com.example.myTools.BuildConfig
 import com.example.myTools.MainActivity
 import com.example.myTools.R
+import com.example.myTools.almanac.AlmanacScreen
 import com.example.myTools.bazi.BaZiScreen
+import com.example.myTools.birthday.LunarBirthdayScreen
 import com.example.myTools.caliper.CaliperScreen
 import com.example.myTools.carspeed.CarSpeedScreen
 import com.example.myTools.luopan.LuopanScreen
+import com.example.myTools.note.NoteScreen
 import com.example.myTools.period.PeriodTrackerScreen
 import com.example.myTools.ui.BlurryContainer
+import com.example.myTools.ui.CommonTopBar
+import com.example.myTools.ui.ShareAppMenuItem
 import com.example.myTools.ui.theme.AppThemeScheme
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
-sealed class Tool(val title: String, val icon: ImageVector) {
-    object BaZi : Tool("八字", Icons.Default.AutoFixHigh)
-    object Luopan : Tool("羅盤", Icons.Default.Explore)
-    object Caliper : Tool("尺規", Icons.Default.Straighten)
-    object CarSpeed : Tool("車速", Icons.Default.Speed)
-    object PeriodTracker : Tool("月經記錄", Icons.Default.CalendarMonth)
+sealed class Tool(val title: String, val icon: ImageVector, val route: String? = null) {
+    object Almanac : Tool("黃曆", Icons.Default.CalendarMonth, "almanac")
+    object Note : Tool("記事本", Icons.Default.Description, "note")
+    object Birthday : Tool("生日", Icons.Default.Cake, "birthday")
+    object BaZi : Tool("八字", Icons.Default.AutoFixHigh, "bazi")
+    object Luopan : Tool("羅盤", Icons.Default.Explore, "luopan")
+    object Caliper : Tool("尺規", Icons.Default.Straighten, "caliper")
+    object CarSpeed : Tool("車速", Icons.Default.Speed, "carspeed")
+    object PeriodTracker : Tool("月經記錄", Icons.Default.CalendarToday, "period")
+    object Theme : Tool("個性化主題", Icons.Default.Palette)
     object Widget : Tool("添加小工具", Icons.Default.Dashboard)
     object DataManagement : Tool("數據管理", Icons.Default.CloudSync)
+    object BottomBar : Tool("底欄設置", Icons.Default.ViewCompact)
     object Settings : Tool("權限申請", Icons.Default.Settings)
     object Support : Tool("打賞支持", Icons.Default.VolunteerActivism)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
+fun ToolsScreen(
+    onToggleBottomBar: (Boolean) -> Unit,
+    onBottomBarUpdated: () -> Unit = {},
+    onSelectBottomBarTab: (String) -> Unit = {}
+) {
     var selectedTool by rememberSaveable { mutableStateOf<String?>(null) }
+    var showBottomBarDialog by rememberSaveable { mutableStateOf(false) }
     var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
     var showThemeDialog by rememberSaveable { mutableStateOf(false) }
     var showDataManagementDialog by rememberSaveable { mutableStateOf(false) }
@@ -81,13 +160,13 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
 
+    val appPreferences = remember { AppPreferences(context) }
+    var bottomBarSlotsTrigger by remember { mutableIntStateOf(0) }
+    val bottomBarSlots = remember(bottomBarSlotsTrigger) { appPreferences.getBottomBarSlots() }
+
     // 動態調整系統狀態列圖示顏色與底部欄顯示
     LaunchedEffect(selectedTool) {
-        val shouldShowBottomBar = selectedTool != Tool.Luopan.title && 
-                                 selectedTool != Tool.CarSpeed.title && 
-                                 selectedTool != Tool.Caliper.title &&
-                                 selectedTool != Tool.PeriodTracker.title &&
-                                 selectedTool != Tool.BaZi.title
+        val shouldShowBottomBar = selectedTool == null
         
         onToggleBottomBar(shouldShowBottomBar)
         
@@ -96,10 +175,20 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         insetsController.isAppearanceLightStatusBars = shouldShowBottomBar
     }
 
-    val isAnyDialogOpen = showSettingsDialog || showThemeDialog || showDataManagementDialog || showPasswordDialog || showGeneratorDialog || showChannelChoiceDialog || selectedTool == Tool.Support.title
+    val isAnyDialogOpen = showBottomBarDialog || showSettingsDialog || showThemeDialog || showDataManagementDialog || showPasswordDialog || showGeneratorDialog || showChannelChoiceDialog || selectedTool == Tool.Support.title
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
+    }
+
+    if (showBottomBarDialog) {
+        BottomBarSettingsDialog(
+            onDismiss = { showBottomBarDialog = false },
+            onSettingsSaved = {
+                bottomBarSlotsTrigger++
+                onBottomBarUpdated()
+            }
+        )
     }
 
     if (showChannelChoiceDialog) {
@@ -475,15 +564,8 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
         Scaffold(
             topBar = {
                 BlurryContainer(isBlur = isAnyDialogOpen) {
-                    TopAppBar(
-                        title = { 
-                            Text(
-                                text = "工具箱", 
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary
-                            ) 
-                        },
+                    CommonTopBar(
+                        title = "工具箱",
                         actions = {
                             Box {
                                 IconButton(onClick = { menuExpanded = true }) {
@@ -517,28 +599,11 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                         },
                                         leadingIcon = { Icon(Icons.Default.OndemandVideo, contentDescription = null) }
                                     )
-                                    val appName = stringResource(id = R.string.app_name)
-                                    DropdownMenuItem(
-                                        text = { Text("分享 App") },
-                                        onClick = {
-                                            menuExpanded = false
-                                            val downloadUrl = "https://github.com/AppPlayForge/sswu-1.git"
-                                            val shareText = "推薦你使用「$appName」，有很多實用的工具！下載地址：$downloadUrl"
 
-                                            // 自動複製到剪貼板，解決微信/QQ等應用無法自動獲取文本的問題
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                            val clip = ClipData.newPlainText("App Share", shareText)
-                                            clipboard.setPrimaryClip(clip)
-                                            Toast.makeText(context, "分享內容已複製到剪貼板", Toast.LENGTH_SHORT).show()
-
-                                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                                type = "text/plain"
-                                                putExtra(Intent.EXTRA_TEXT, shareText)
-                                            }
-                                            context.startActivity(Intent.createChooser(shareIntent, "分享給好友"))
-                                        },
-                                        leadingIcon = { Icon(Icons.Default.Share, null) }
+                                    ShareAppMenuItem(
+                                        onDismissRequest = { menuExpanded = false }
                                     )
+
                                     DropdownMenuItem(
                                         text = { Text("其它應用") },
                                         onClick = {
@@ -564,10 +629,7 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                     )
                                 }
                             }
-                        },
-                        colors = TopAppBarDefaults.topAppBarColors(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        )
+                        }
                     )
                 }
             },
@@ -577,66 +639,105 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                 isBlur = isAnyDialogOpen,
                 modifier = Modifier.padding(innerPadding).fillMaxSize()
             ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // 主題設置入口
-                    ThemeEntrySection(onClick = { showThemeDialog = true })
-                    
-                    val firstGroup = listOf(
-                        Tool.BaZi,
-                        Tool.Luopan,
-                        Tool.Caliper,
-                        Tool.CarSpeed,
-                        Tool.PeriodTracker
-                    )
-                    val secondGroup = listOf(
-                        Tool.Widget,
-                        Tool.DataManagement,
-                        Tool.Settings,
-                        Tool.Support
-                    )
+                val currentTheme by MainActivity.themeScheme.collectAsState()
+                val themeLabel = getThemeLabel(currentTheme)
 
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .verticalScroll(rememberScrollState())
-                            .padding(horizontal = 16.dp, vertical = 8.dp)
-                    ) {
-                        // 第一組 (3列)
-                        firstGroup.chunked(3).forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                rowItems.forEach { tool ->
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        ToolItem(tool = tool) {
+                val firstGroup = listOf(
+                    Tool.Almanac,
+                    Tool.Note,
+                    Tool.Birthday,
+                    Tool.BaZi,
+                    Tool.Luopan,
+                    Tool.Caliper,
+                    Tool.CarSpeed,
+                    Tool.PeriodTracker
+                )
+                val secondGroup = listOf(
+                    Tool.Theme,
+                    Tool.Widget,
+                    Tool.DataManagement,
+                    Tool.BottomBar,
+                    Tool.Settings,
+                    Tool.Support
+                )
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                ) {
+                    // 第一組標題：實用工具
+                    SectionHeader(title = "實用工具", icon = Icons.Default.Apps)
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // 第一組 (3列 x 3行，卡片更寬敞舒適，保留後續工具擴展空間)
+                    firstGroup.chunked(3).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 5.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowItems.forEach { tool ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    val isPinned = tool.route != null && bottomBarSlots.contains(tool.route)
+                                    ToolItem(
+                                        tool = tool,
+                                        isPinned = isPinned
+                                    ) {
+                                        if (isPinned) {
+                                            Toast.makeText(context, "已為您切換至底欄「${tool.title}」", Toast.LENGTH_SHORT).show()
+                                            tool.route.let { route -> onSelectBottomBarTab(route) }
+                                        } else {
                                             selectedTool = tool.title
                                         }
                                     }
                                 }
-                                repeat(3 - rowItems.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
+                            }
+                            repeat(3 - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
+                    }
 
-                        HorizontalDivider(
-                            modifier = Modifier.padding(vertical = 16.dp),
-                            thickness = 1.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-                        )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                        // 第二組 (4列)
-                        secondGroup.chunked(4).forEach { rowItems ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                rowItems.forEach { tool ->
-                                    Box(modifier = Modifier.weight(1f)) {
-                                        ToolItem(tool = tool, isSmall = true) {
+                    // 第二組標題：系統與服務
+                    SectionHeader(title = "系統與服務", icon = Icons.Default.Tune)
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    // 第二組 (3列，適當高度確保主題與文字完整展示)
+                    secondGroup.chunked(3).forEach { rowItems ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            rowItems.forEach { tool ->
+                                Box(modifier = Modifier.weight(1f)) {
+                                    val subtitle = if (tool is Tool.Theme) themeLabel else null
+                                    val isPinned = tool.route != null && bottomBarSlots.contains(tool.route)
+                                    ToolItem(
+                                        tool = tool,
+                                        isSmall = true,
+                                        isPinned = isPinned,
+                                        subtitle = subtitle
+                                    ) {
+                                        if (isPinned) {
+                                            Toast.makeText(context, "已為您切換至底欄「${tool.title}」", Toast.LENGTH_SHORT).show()
+                                            tool.route?.let { route -> onSelectBottomBarTab(route) }
+                                        } else {
                                             when (tool) {
+                                                is Tool.Theme -> showThemeDialog = true
                                                 is Tool.Widget -> requestPinWidget(context)
+                                                is Tool.BottomBar -> showBottomBarDialog = true
                                                 is Tool.Settings -> showSettingsDialog = true
                                                 is Tool.DataManagement -> showDataManagementDialog = true
                                                 else -> selectedTool = tool.title
@@ -644,9 +745,9 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
                                         }
                                     }
                                 }
-                                repeat(4 - rowItems.size) {
-                                    Spacer(modifier = Modifier.weight(1f))
-                                }
+                            }
+                            repeat(3 - rowItems.size) {
+                                Spacer(modifier = Modifier.weight(1f))
                             }
                         }
                     }
@@ -682,58 +783,15 @@ fun ToolsScreen(onToggleBottomBar: (Boolean) -> Unit) {
     } else {
         Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))) {
             when (selectedTool) {
+                Tool.Almanac.title -> AlmanacScreen(modifier = Modifier.fillMaxSize())
+                Tool.Note.title -> NoteScreen()
+                Tool.Birthday.title -> LunarBirthdayScreen()
                 Tool.BaZi.title -> BaZiScreen(onBack = { selectedTool = null })
                 Tool.Luopan.title -> LuopanScreen(onBack = { selectedTool = null })
                 Tool.Caliper.title -> CaliperScreen(onBack = { selectedTool = null })
                 Tool.CarSpeed.title -> CarSpeedScreen(onBack = { selectedTool = null })
                 Tool.PeriodTracker.title -> PeriodTrackerScreen(onBack = { selectedTool = null })
             }
-        }
-    }
-}
-
-@Composable
-fun ThemeEntrySection(onClick: () -> Unit) {
-    val currentTheme by MainActivity.themeScheme.collectAsState()
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                Icons.Default.Palette, 
-                contentDescription = null, 
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "個性化主題", 
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    "當前配色: ${getThemeLabel(currentTheme)}",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Icon(
-                Icons.Default.ChevronRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
         }
     }
 }
@@ -753,39 +811,122 @@ private fun getThemeLabel(scheme: AppThemeScheme): String {
 }
 
 @Composable
-fun ToolItem(tool: Tool, isSmall: Boolean = false, onClick: () -> Unit) {
+private fun SectionHeader(title: String, icon: ImageVector) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp, bottom = 4.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp)
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+    }
+}
+
+@Composable
+fun ToolItem(
+    tool: Tool,
+    isSmall: Boolean = false,
+    isPinned: Boolean = false,
+    subtitle: String? = null,
+    onClick: () -> Unit
+) {
+    val alpha = if (isPinned) 0.45f else 1.0f
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(if (isSmall) 12.dp else 16.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
-        tonalElevation = 1.dp,
+        shape = RoundedCornerShape(if (isSmall) 16.dp else 20.dp),
+        color = if (isPinned) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.surfaceContainerHigh,
+        tonalElevation = if (isPinned) 0.dp else 2.dp,
+        shadowElevation = if (isPinned) 0.dp else 1.dp,
         modifier = Modifier
-            .aspectRatio(1f)
+            .fillMaxWidth()
+            //系統與工具 卡片的高度
+            // else後面的部分就是專門設置 「實用工具」 高度的
+            .then(
+                if (isSmall) Modifier.height(75.dp) else Modifier.height(85.dp)
+            )
             .border(
                 0.5.dp, 
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                RoundedCornerShape(if (isSmall) 12.dp else 16.dp)
+                if (isPinned) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                RoundedCornerShape(if (isSmall) 16.dp else 20.dp)
             )
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(if (isSmall) 4.dp else 8.dp)
-        ) {
-            Icon(
-                imageVector = tool.icon,
-                contentDescription = tool.title,
-                modifier = Modifier.size(if (isSmall) 24.dp else 48.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(if (isSmall) 4.dp else 6.dp))
-            Text(
-                text = tool.title,
-                style = if (isSmall) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp, vertical = 4.dp)
+                    .graphicsLayer { this.alpha = alpha }
+            ) {
+                Icon(
+                    imageVector = tool.icon,
+                    contentDescription = tool.title,
+                    modifier = Modifier.size(if (isSmall) 22.dp else 42.dp),
+                    tint = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(if (isSmall) 2.dp else 6.dp))
+                Text(
+                    text = tool.title,
+                    style = if (isSmall) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleMedium,
+                    fontSize = if (isSmall) 11.5.sp else 15.sp,
+                    color = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (subtitle != null) {
+                    Spacer(modifier = Modifier.height(1.dp))
+                    Text(
+                        text = subtitle,
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (isPinned) {
+                Surface(
+                    shape = RoundedCornerShape(topEnd = if (isSmall) 16.dp else 20.dp, bottomStart = 8.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.PinDrop,
+                            contentDescription = "已在底欄",
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.size(10.dp)
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = "底欄",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
         }
     }
 }

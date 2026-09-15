@@ -17,8 +17,14 @@ data class BaZiRecord(
     val city: String = "",
     val isLunar: Boolean = false,
     val isLeapMonth: Boolean = false, // 僅在農曆時有效
-    val aiAnalysis: String? = null // AI 批注數據
+    val aiAnalysis: String? = null, // AI 批注數據
+    val isPinned: Boolean = false,
+    val tags: List<String>? = emptyList(),
+    val deletedAt: Long = 0L
 ) {
     val name: String
         get() = surname + givenName
+
+    val safeTags: List<String>
+        get() = tags ?: emptyList()
 }
