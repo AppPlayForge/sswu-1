@@ -36,3 +36,4 @@ Copyright © 2026 AppPlayForge. All rights reserved.
 <img width="30%" alt="尺規" src="https://github.com/user-attachments/assets/4607662e-9b38-40bf-842d-2d740f5c92e0" />
 <img width="30%" alt="羅盤" src="https://github.com/user-attachments/assets/339be9a4-e5f8-4cd0-9936-e6e3ed3bb7d2" />
 <img width="30%" alt="Screenshot_20260829_133914" src="https://github.com/user-attachments/assets/c771cafb-bfc3-407d-895d-695cbf8f9d48" />
+<img width="30%" alt="Screenshot_20260916_162046" src="https://github.com/user-attachments/assets/f5de75a6-8020-4a63-a48c-5528eebaf9d4" />
