@@ -416,7 +416,7 @@ fun PeriodTrackerScreen(
                         Row(
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                            horizontalArrangement = Arrangement.Start
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Lock,
@@ -426,10 +426,10 @@ fun PeriodTrackerScreen(
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "🔒 隱私安全聲明：所有記錄僅加密存於手機本地，絕不上傳。[點擊查看詳情]",
+                                text = "隱私安全聲明：\n所有記錄僅加密存於手機本地[點擊查看詳情]",
                                 fontSize = 11.5.sp,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center,
+                                textAlign = TextAlign.Start,
                                 fontWeight = FontWeight.Medium
                             )
                         }
