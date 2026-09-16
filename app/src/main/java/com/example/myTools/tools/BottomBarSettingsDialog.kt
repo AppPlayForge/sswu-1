@@ -107,7 +107,7 @@ fun BottomBarSettingsDialog(
                     Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text = "可選擇 1 ~ 3 個功能釘選到底部欄（＋固定「工具」標籤）",
+                        text = "可選擇 1 ~ 3 個功能釘選到底部欄",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         textAlign = TextAlign.Center

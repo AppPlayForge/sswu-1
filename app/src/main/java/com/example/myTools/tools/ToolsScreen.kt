@@ -112,7 +112,6 @@ import com.example.myTools.caliper.CaliperScreen
 import com.example.myTools.carspeed.AppPreferences
 import com.example.myTools.carspeed.CarSpeedScreen
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.shape.CircleShape
 import com.example.myTools.ui.RedBadgeNumber
 import com.example.myTools.utils.AppBadgeManager
 import com.example.myTools.luopan.LuopanScreen
@@ -135,7 +134,7 @@ sealed class Tool(val title: String, val icon: ImageVector, val route: String? =
     data object Caliper : Tool("尺規", Icons.Default.Straighten, "caliper")
     data object CarSpeed : Tool("車速", Icons.Default.Speed, "carspeed")
     data object PeriodTracker : Tool("月經記錄", Icons.Default.CalendarToday, "period")
-    data object Theme : Tool("個性化主題", Icons.Default.Palette)
+    data object Theme : Tool("主題", Icons.Default.Palette)
     data object Widget : Tool("添加小工具", Icons.Default.Dashboard)
     data object DataManagement : Tool("數據管理", Icons.Default.CloudSync)
     data object BottomBar : Tool("底欄設置", Icons.Default.ViewCompact)
@@ -735,13 +734,13 @@ fun ToolsScreen(
                     SectionHeader(title = "系統與服務", icon = Icons.Default.Tune)
                     Spacer(modifier = Modifier.height(2.dp))
 
-                    // 第二組 (3列，適當高度確保主題與文字完整展示)
-                    secondGroup.chunked(3).forEach { rowItems ->
+                    // 第二組 (4列 x 2行)
+                    secondGroup.chunked(4).forEach { rowItems ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             rowItems.forEach { tool ->
                                 Box(modifier = Modifier.weight(1f)) {
@@ -770,7 +769,7 @@ fun ToolsScreen(
                                     }
                                 }
                             }
-                            repeat(3 - rowItems.size) {
+                            repeat(4 - rowItems.size) {
                                 Spacer(modifier = Modifier.weight(1f))
                             }
                         }
@@ -912,22 +911,37 @@ fun ToolItem(
                     }
                 }
                 Spacer(modifier = Modifier.height(if (isSmall) 2.dp else 6.dp))
-                Text(
-                    text = tool.title,
-                    style = if (isSmall) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleMedium,
-                    fontSize = if (isSmall) 11.5.sp else 15.sp,
-                    color = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
                 if (subtitle != null) {
-                    Spacer(modifier = Modifier.height(1.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = tool.title,
+                            style = if (isSmall) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleMedium,
+                            fontSize = if (isSmall) 11.5.sp else 15.sp,
+                            color = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = subtitle,
+                            fontSize = if (isSmall) 10.sp else 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                } else {
                     Text(
-                        text = subtitle,
-                        fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Medium,
+                        text = tool.title,
+                        style = if (isSmall) MaterialTheme.typography.labelMedium else MaterialTheme.typography.titleMedium,
+                        fontSize = if (isSmall) 11.5.sp else 15.sp,
+                        color = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
