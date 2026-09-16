@@ -1,7 +1,7 @@
 package com.example.myTools.note
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -67,11 +67,16 @@ data class NoteUiState(
                 openedTxtFile != null || managingTagsNote != null
 }
 
-class NoteViewModel : ViewModel() {
+class NoteViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(NoteUiState())
     val uiState: StateFlow<NoteUiState> = _uiState.asStateFlow()
 
-    fun loadData(context: Context) {
+    init {
+        loadData()
+    }
+
+    fun loadData() {
+        val context = getApplication<Application>()
         val activeList = NoteManager.loadList(context)
         val trashList = NoteManager.loadTrashList(context)
         val isGrid = NoteManager.isGridView(context)
@@ -84,7 +89,8 @@ class NoteViewModel : ViewModel() {
         }
     }
 
-    fun setGridView(context: Context, isGrid: Boolean) {
+    fun setGridView(isGrid: Boolean) {
+        val context = getApplication<Application>()
         NoteManager.setGridView(context, isGrid)
         _uiState.update { it.copy(isGridView = isGrid) }
     }
@@ -125,49 +131,57 @@ class NoteViewModel : ViewModel() {
         _uiState.update { it.copy(managingTagsNote = note) }
     }
 
-    fun saveNote(context: Context, note: NoteRecord) {
+    fun saveNote(note: NoteRecord) {
+        val context = getApplication<Application>()
         NoteManager.addOrUpdateRecord(context, note)
-        loadData(context)
+        loadData()
         _uiState.update { it.copy(editingNote = null) }
     }
 
-    fun togglePin(context: Context, noteId: Long) {
+    fun togglePin(noteId: Long) {
+        val context = getApplication<Application>()
         NoteManager.togglePinRecord(context, noteId)
-        loadData(context)
+        loadData()
     }
 
-    fun moveToTrash(context: Context, noteId: Long) {
+    fun moveToTrash(noteId: Long) {
+        val context = getApplication<Application>()
         NoteManager.moveToTrash(context, noteId)
-        loadData(context)
+        loadData()
         _uiState.update { it.copy(deletingNote = null) }
     }
 
-    fun restoreFromTrash(context: Context, noteId: Long) {
+    fun restoreFromTrash(noteId: Long) {
+        val context = getApplication<Application>()
         NoteManager.restoreFromTrash(context, noteId)
-        loadData(context)
+        loadData()
     }
 
-    fun permanentlyDeleteFromTrash(context: Context, noteId: Long) {
+    fun permanentlyDeleteFromTrash(noteId: Long) {
+        val context = getApplication<Application>()
         NoteManager.permanentlyDeleteFromTrash(context, noteId)
-        loadData(context)
+        loadData()
     }
 
-    fun emptyTrash(context: Context) {
+    fun emptyTrash() {
+        val context = getApplication<Application>()
         NoteManager.emptyTrash(context)
-        loadData(context)
+        loadData()
     }
 
-    fun saveTags(context: Context, note: NoteRecord, tags: List<String>) {
+    fun saveTags(note: NoteRecord, tags: List<String>) {
+        val context = getApplication<Application>()
         val updatedNote = note.copy(tags = tags)
         NoteManager.addOrUpdateRecord(context, updatedNote)
-        loadData(context)
+        loadData()
         _uiState.update { it.copy(managingTagsNote = null) }
     }
 
-    fun importNotesFromTxt(context: Context, content: String, defaultTitle: String): Int {
+    fun importNotesFromTxt(content: String, defaultTitle: String): Int {
+        val context = getApplication<Application>()
         val count = NoteManager.importNotesFromTxt(context, content, defaultTitle)
         if (count > 0) {
-            loadData(context)
+            loadData()
         }
         return count
     }

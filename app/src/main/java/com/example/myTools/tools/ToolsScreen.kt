@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -51,10 +50,9 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OndemandVideo
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.PinDrop
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
-import com.example.myTools.carspeed.AppPreferences
 import androidx.compose.material.icons.filled.Straighten
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.ViewCompact
@@ -111,7 +109,12 @@ import com.example.myTools.almanac.AlmanacScreen
 import com.example.myTools.bazi.BaZiScreen
 import com.example.myTools.birthday.LunarBirthdayScreen
 import com.example.myTools.caliper.CaliperScreen
+import com.example.myTools.carspeed.AppPreferences
 import com.example.myTools.carspeed.CarSpeedScreen
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.shape.CircleShape
+import com.example.myTools.ui.RedBadgeNumber
+import com.example.myTools.utils.AppBadgeManager
 import com.example.myTools.luopan.LuopanScreen
 import com.example.myTools.note.NoteScreen
 import com.example.myTools.period.PeriodTrackerScreen
@@ -124,20 +127,20 @@ import java.util.Date
 import java.util.Locale
 
 sealed class Tool(val title: String, val icon: ImageVector, val route: String? = null) {
-    object Almanac : Tool("黃曆", Icons.Default.CalendarMonth, "almanac")
-    object Note : Tool("記事本", Icons.Default.Description, "note")
-    object Birthday : Tool("生日", Icons.Default.Cake, "birthday")
-    object BaZi : Tool("八字", Icons.Default.AutoFixHigh, "bazi")
-    object Luopan : Tool("羅盤", Icons.Default.Explore, "luopan")
-    object Caliper : Tool("尺規", Icons.Default.Straighten, "caliper")
-    object CarSpeed : Tool("車速", Icons.Default.Speed, "carspeed")
-    object PeriodTracker : Tool("月經記錄", Icons.Default.CalendarToday, "period")
-    object Theme : Tool("個性化主題", Icons.Default.Palette)
-    object Widget : Tool("添加小工具", Icons.Default.Dashboard)
-    object DataManagement : Tool("數據管理", Icons.Default.CloudSync)
-    object BottomBar : Tool("底欄設置", Icons.Default.ViewCompact)
-    object Settings : Tool("權限申請", Icons.Default.Settings)
-    object Support : Tool("打賞支持", Icons.Default.VolunteerActivism)
+    data object Almanac : Tool("黃曆", Icons.Default.CalendarMonth, "almanac")
+    data object Note : Tool("記事本", Icons.Default.Description, "note")
+    data object Birthday : Tool("生日", Icons.Default.Cake, "birthday")
+    data object BaZi : Tool("八字", Icons.Default.AutoFixHigh, "bazi")
+    data object Luopan : Tool("羅盤", Icons.Default.Explore, "luopan")
+    data object Caliper : Tool("尺規", Icons.Default.Straighten, "caliper")
+    data object CarSpeed : Tool("車速", Icons.Default.Speed, "carspeed")
+    data object PeriodTracker : Tool("月經記錄", Icons.Default.CalendarToday, "period")
+    data object Theme : Tool("個性化主題", Icons.Default.Palette)
+    data object Widget : Tool("添加小工具", Icons.Default.Dashboard)
+    data object DataManagement : Tool("數據管理", Icons.Default.CloudSync)
+    data object BottomBar : Tool("底欄設置", Icons.Default.ViewCompact)
+    data object Settings : Tool("權限申請", Icons.Default.Settings)
+    data object Support : Tool("打賞支持", Icons.Default.VolunteerActivism)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -145,18 +148,18 @@ sealed class Tool(val title: String, val icon: ImageVector, val route: String? =
 fun ToolsScreen(
     onToggleBottomBar: (Boolean) -> Unit,
     onBottomBarUpdated: () -> Unit = {},
-    onSelectBottomBarTab: (String) -> Unit = {}
+    onSelectBottomBarTab: (String) -> Unit = {},
 ) {
     var selectedTool by rememberSaveable { mutableStateOf<String?>(null) }
-    var showBottomBarDialog by rememberSaveable { mutableStateOf(false) }
-    var showSettingsDialog by rememberSaveable { mutableStateOf(false) }
-    var showThemeDialog by rememberSaveable { mutableStateOf(false) }
-    var showDataManagementDialog by rememberSaveable { mutableStateOf(false) }
+    var showBottomBarDialog by rememberSaveable { mutableStateOf(value = false) }
+    var showSettingsDialog by rememberSaveable { mutableStateOf(value = false) }
+    var showThemeDialog by rememberSaveable { mutableStateOf(value = false) }
+    var showDataManagementDialog by rememberSaveable { mutableStateOf(value = false) }
     var versionClickCount by remember { mutableIntStateOf(0) }
-    var showPasswordDialog by remember { mutableStateOf(false) }
-    var showGeneratorDialog by remember { mutableStateOf(false) }
-    var showChannelChoiceDialog by remember { mutableStateOf(false) }
-    var menuExpanded by remember { mutableStateOf(false) }
+    var showPasswordDialog by remember { mutableStateOf(value = false) }
+    var showGeneratorDialog by remember { mutableStateOf(value = false) }
+    var showChannelChoiceDialog by remember { mutableStateOf(value = false) }
+    var menuExpanded by remember { mutableStateOf(value = false) }
     val context = LocalContext.current
     val view = LocalView.current
 
@@ -167,15 +170,17 @@ fun ToolsScreen(
     // 動態調整系統狀態列圖示顏色與底部欄顯示
     LaunchedEffect(selectedTool) {
         val shouldShowBottomBar = selectedTool == null
-        
+
         onToggleBottomBar(shouldShowBottomBar)
-        
+
         val window = (context as? Activity)?.window ?: return@LaunchedEffect
         val insetsController = WindowCompat.getInsetsController(window, view)
         insetsController.isAppearanceLightStatusBars = shouldShowBottomBar
     }
 
-    val isAnyDialogOpen = showBottomBarDialog || showSettingsDialog || showThemeDialog || showDataManagementDialog || showPasswordDialog || showGeneratorDialog || showChannelChoiceDialog || selectedTool == Tool.Support.title
+    val isAnyDialogOpen = showBottomBarDialog || showSettingsDialog || showThemeDialog ||
+            showDataManagementDialog || showPasswordDialog || showGeneratorDialog ||
+            showChannelChoiceDialog || (selectedTool == Tool.Support.title)
 
     LaunchedEffect(isAnyDialogOpen) {
         MainActivity.setAppBlurred(isAnyDialogOpen)
@@ -187,25 +192,25 @@ fun ToolsScreen(
             onSettingsSaved = {
                 bottomBarSlotsTrigger++
                 onBottomBarUpdated()
-            }
+            },
         )
     }
 
     if (showChannelChoiceDialog) {
         Dialog(
-            onDismissRequest = { showChannelChoiceDialog = false }
+            onDismissRequest = { showChannelChoiceDialog = false },
         ) {
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                elevation = CardDefaults.cardElevation(12.dp)
+                elevation = CardDefaults.cardElevation(12.dp),
             ) {
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 24.dp, vertical = 20.dp)
                         .width(IntrinsicSize.Max),
                     horizontalAlignment = Alignment.Start,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     // YouTube
                     Row(
@@ -221,13 +226,13 @@ fun ToolsScreen(
                                     Toast.makeText(context, "無法打開連結", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_youtube),
                             contentDescription = "YouTube",
                             tint = Color.Unspecified,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(36.dp),
                         )
                     }
 
@@ -245,20 +250,20 @@ fun ToolsScreen(
                                     Toast.makeText(context, "無法打開連結", Toast.LENGTH_SHORT).show()
                                 }
                             }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_bilibili),
                             contentDescription = "Bilibili",
                             tint = Color.Unspecified,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(36.dp),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
                             text = "bilibili",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFB7299)
+                            color = Color(0xFFFB7299),
                         )
                     }
                 }
@@ -269,7 +274,7 @@ fun ToolsScreen(
     if (showSettingsDialog) {
         AppSettingsDialog(onDismiss = { showSettingsDialog = false })
     }
-    
+
     if (showThemeDialog) {
         ThemeSettingsDialog(onDismiss = { showThemeDialog = false })
     }
@@ -280,13 +285,13 @@ fun ToolsScreen(
 
     if (showPasswordDialog) {
         var passwordInput by remember { mutableStateOf("") }
-        
+
         AlertDialog(
             onDismissRequest = { showPasswordDialog = false },
             properties = DialogProperties(
                 dismissOnClickOutside = false,
                 dismissOnBackPress = false,
-                usePlatformDefaultWidth = false
+                usePlatformDefaultWidth = false,
             ),
             modifier = Modifier
                 .fillMaxWidth(0.85f)
@@ -294,7 +299,7 @@ fun ToolsScreen(
             title = { Text("驗證", fontWeight = FontWeight.Bold) },
             text = {
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
                     TextField(
                         value = passwordInput,
@@ -303,19 +308,21 @@ fun ToolsScreen(
                         singleLine = true,
                         visualTransformation = PasswordVisualTransformation(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    if (ActivationSecret.verifyPassword(passwordInput)) {
-                        showPasswordDialog = false
-                        showGeneratorDialog = true
-                    } else {
-                        Toast.makeText(context, "密碼錯誤", Toast.LENGTH_SHORT).show()
-                    }
-                }) {
+                TextButton(
+                    onClick = {
+                        if (ActivationSecret.verifyPassword(passwordInput)) {
+                            showPasswordDialog = false
+                            showGeneratorDialog = true
+                        } else {
+                            Toast.makeText(context, "密碼錯誤", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                ) {
                     Text("確認")
                 }
             },
@@ -323,7 +330,7 @@ fun ToolsScreen(
                 TextButton(onClick = { showPasswordDialog = false }) {
                     Text("關閉")
                 }
-            }
+            },
         )
     }
 
@@ -334,7 +341,7 @@ fun ToolsScreen(
 
         Dialog(
             onDismissRequest = { showGeneratorDialog = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
+            properties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             Card(
                 modifier = Modifier
@@ -342,23 +349,23 @@ fun ToolsScreen(
                     .fillMaxHeight(0.85f),
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                elevation = CardDefaults.cardElevation(12.dp)
+                elevation = CardDefaults.cardElevation(12.dp),
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(20.dp)
+                        .padding(20.dp),
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             "激活碼生成器",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
+                            color = MaterialTheme.colorScheme.primary,
                         )
                         IconButton(onClick = { showGeneratorDialog = false }) {
                             Icon(Icons.Default.Close, contentDescription = "關閉")
@@ -383,7 +390,7 @@ fun ToolsScreen(
                                     }
                                 }
                             },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         TextButton(onClick = {
@@ -414,7 +421,7 @@ fun ToolsScreen(
                                 Toast.makeText(context, "請輸入設備ID", Toast.LENGTH_SHORT).show()
                             }
                         },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
                     ) {
                         Text("生成激活碼")
                     }
@@ -423,7 +430,7 @@ fun ToolsScreen(
                         Spacer(modifier = Modifier.height(12.dp))
                         Card(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text("當前生成的激活碼：", style = MaterialTheme.typography.labelMedium)
@@ -433,7 +440,7 @@ fun ToolsScreen(
                                             generatedCode,
                                             style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary
+                                            color = MaterialTheme.colorScheme.primary,
                                         )
                                     }
                                     IconButton(onClick = {
@@ -456,7 +463,7 @@ fun ToolsScreen(
                                                 Toast.makeText(context, "激活失敗", Toast.LENGTH_SHORT).show()
                                             }
                                         },
-                                        modifier = Modifier.fillMaxWidth()
+                                        modifier = Modifier.fillMaxWidth(),
                                     ) {
                                         Text("直接激活本機")
                                     }
@@ -472,12 +479,12 @@ fun ToolsScreen(
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             "生成歷史記錄 (${historyList.size})",
                             style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                         if (historyList.isNotEmpty()) {
                             TextButton(onClick = {
@@ -496,14 +503,14 @@ fun ToolsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Text("暫無生成記錄", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
                         }
                     } else {
                         LazyColumn(
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             items(historyList) { item ->
                                 val dateStr = remember(item.timestamp) {
@@ -511,31 +518,31 @@ fun ToolsScreen(
                                 }
                                 Card(
                                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-                                    modifier = Modifier.fillMaxWidth()
+                                    modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                        verticalAlignment = Alignment.CenterVertically,
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(
                                                 text = dateStr,
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
                                             Spacer(modifier = Modifier.height(2.dp))
                                             Text(
                                                 text = "設備 ID: ${item.deviceId}",
                                                 style = MaterialTheme.typography.bodySmall,
-                                                fontWeight = FontWeight.Medium
+                                                fontWeight = FontWeight.Medium,
                                             )
                                             Text(
                                                 text = "激活碼: ${item.code}",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 fontWeight = FontWeight.Bold,
-                                                color = MaterialTheme.colorScheme.primary
+                                                color = MaterialTheme.colorScheme.primary,
                                             )
                                         }
                                         IconButton(onClick = {
@@ -570,14 +577,14 @@ fun ToolsScreen(
                             Box {
                                 IconButton(onClick = { menuExpanded = true }) {
                                     Icon(
-                                        Icons.Default.MoreVert, 
+                                        Icons.Default.MoreVert,
                                         contentDescription = "更多",
-                                        tint = MaterialTheme.colorScheme.primary
+                                        tint = MaterialTheme.colorScheme.primary,
                                     )
                                 }
                                 DropdownMenu(
                                     expanded = menuExpanded,
-                                    onDismissRequest = { menuExpanded = false }
+                                    onDismissRequest = { menuExpanded = false },
                                 ) {
                                     DropdownMenuItem(
                                         text = { Text("聯繫作者") },
@@ -589,7 +596,7 @@ fun ToolsScreen(
                                             }
                                             try { context.startActivity(intent) } catch (_: Exception) {}
                                         },
-                                        leadingIcon = { Icon(Icons.Default.Email, null) }
+                                        leadingIcon = { Icon(Icons.Default.Email, null) },
                                     )
                                     DropdownMenuItem(
                                         text = { Text("我們的頻道") },
@@ -597,11 +604,11 @@ fun ToolsScreen(
                                             menuExpanded = false
                                             showChannelChoiceDialog = true
                                         },
-                                        leadingIcon = { Icon(Icons.Default.OndemandVideo, contentDescription = null) }
+                                        leadingIcon = { Icon(Icons.Default.OndemandVideo, contentDescription = null) },
                                     )
 
                                     ShareAppMenuItem(
-                                        onDismissRequest = { menuExpanded = false }
+                                        onDismissRequest = { menuExpanded = false },
                                     )
 
                                     DropdownMenuItem(
@@ -611,7 +618,7 @@ fun ToolsScreen(
                                             val intent = Intent(Intent.ACTION_VIEW, "https://github.com/AppPlayForge".toUri())
                                             context.startActivity(intent)
                                         },
-                                        leadingIcon = { Icon(Icons.Default.Code, null) }
+                                        leadingIcon = { Icon(Icons.Default.Code, null) },
                                     )
                                     HorizontalDivider()
                                     DropdownMenuItem(
@@ -625,22 +632,30 @@ fun ToolsScreen(
                                             } else if (versionClickCount >= 3) {
                                                 Toast.makeText(context, "再點擊 ${6 - versionClickCount} 次", Toast.LENGTH_SHORT).show()
                                             }
-                                        }
+                                        },
                                     )
                                 }
                             }
-                        }
+                        },
                     )
                 }
             },
-            containerColor = Color.Transparent
+            containerColor = Color.Transparent,
         ) { innerPadding ->
             BlurryContainer(
                 isBlur = isAnyDialogOpen,
-                modifier = Modifier.padding(innerPadding).fillMaxSize()
+                modifier = Modifier.padding(innerPadding).fillMaxSize(),
             ) {
                 val currentTheme by MainActivity.themeScheme.collectAsState()
                 val themeLabel = getThemeLabel(currentTheme)
+                val upcomingBirthdayCount by AppBadgeManager.upcomingBirthdayCount.collectAsState()
+                val upcomingPeriodCount by AppBadgeManager.upcomingPeriodCount.collectAsState()
+                val isCarSpeedRecording by AppBadgeManager.isCarSpeedRecording.collectAsState()
+
+                LaunchedEffect(Unit) {
+                    AppBadgeManager.refreshBirthdayBadges(context)
+                    AppBadgeManager.refreshPeriodBadges(context)
+                }
 
                 val firstGroup = listOf(
                     Tool.Almanac,
@@ -650,7 +665,7 @@ fun ToolsScreen(
                     Tool.Luopan,
                     Tool.Caliper,
                     Tool.CarSpeed,
-                    Tool.PeriodTracker
+                    Tool.PeriodTracker,
                 )
                 val secondGroup = listOf(
                     Tool.Theme,
@@ -658,14 +673,14 @@ fun ToolsScreen(
                     Tool.DataManagement,
                     Tool.BottomBar,
                     Tool.Settings,
-                    Tool.Support
+                    Tool.Support,
                 )
 
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 6.dp)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     // 第一組標題：實用工具
                     SectionHeader(title = "實用工具", icon = Icons.Default.Apps)
@@ -677,18 +692,26 @@ fun ToolsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 5.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             rowItems.forEach { tool ->
                                 Box(modifier = Modifier.weight(1f)) {
-                                    val isPinned = tool.route != null && bottomBarSlots.contains(tool.route)
+                                    val route = tool.route
+                                    val isPinned = route != null && bottomBarSlots.contains(route)
+                                    val badgeCount = when (tool) {
+                                        Tool.Birthday -> upcomingBirthdayCount
+                                        Tool.CarSpeed -> if (isCarSpeedRecording) 1 else 0
+                                        Tool.PeriodTracker -> upcomingPeriodCount
+                                        else -> 0
+                                    }
                                     ToolItem(
                                         tool = tool,
-                                        isPinned = isPinned
+                                        isPinned = isPinned,
+                                        badgeCount = badgeCount,
                                     ) {
-                                        if (isPinned) {
+                                        if (route != null && bottomBarSlots.contains(route)) {
                                             Toast.makeText(context, "已為您切換至底欄「${tool.title}」", Toast.LENGTH_SHORT).show()
-                                            tool.route.let { route -> onSelectBottomBarTab(route) }
+                                            onSelectBottomBarTab(route)
                                         } else {
                                             selectedTool = tool.title
                                         }
@@ -704,7 +727,7 @@ fun ToolsScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     HorizontalDivider(
                         thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
@@ -718,21 +741,22 @@ fun ToolsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             rowItems.forEach { tool ->
                                 Box(modifier = Modifier.weight(1f)) {
                                     val subtitle = if (tool is Tool.Theme) themeLabel else null
-                                    val isPinned = tool.route != null && bottomBarSlots.contains(tool.route)
+                                    val route = tool.route
+                                    val isPinned = route != null && bottomBarSlots.contains(route)
                                     ToolItem(
                                         tool = tool,
                                         isSmall = true,
                                         isPinned = isPinned,
-                                        subtitle = subtitle
+                                        subtitle = subtitle,
                                     ) {
-                                        if (isPinned) {
+                                        if (route != null && bottomBarSlots.contains(route)) {
                                             Toast.makeText(context, "已為您切換至底欄「${tool.title}」", Toast.LENGTH_SHORT).show()
-                                            tool.route?.let { route -> onSelectBottomBarTab(route) }
+                                            onSelectBottomBarTab(route)
                                         } else {
                                             when (tool) {
                                                 is Tool.Theme -> showThemeDialog = true
@@ -758,7 +782,7 @@ fun ToolsScreen(
         if (selectedTool == Tool.Support.title) {
             Dialog(
                 onDismissRequest = { selectedTool = null },
-                properties = DialogProperties(usePlatformDefaultWidth = false)
+                properties = DialogProperties(usePlatformDefaultWidth = false),
             ) {
                 Card(
                     modifier = Modifier
@@ -766,13 +790,13 @@ fun ToolsScreen(
                         .fillMaxHeight(0.85f),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
-                    elevation = CardDefaults.cardElevation(12.dp)
+                    elevation = CardDefaults.cardElevation(12.dp),
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         SupportScreen(modifier = Modifier.fillMaxSize())
                         IconButton(
                             onClick = { selectedTool = null },
-                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp),
                         ) {
                             Icon(Icons.Default.Close, null)
                         }
@@ -785,7 +809,7 @@ fun ToolsScreen(
             when (selectedTool) {
                 Tool.Almanac.title -> AlmanacScreen(modifier = Modifier.fillMaxSize())
                 Tool.Note.title -> NoteScreen()
-                Tool.Birthday.title -> LunarBirthdayScreen()
+                Tool.Birthday.title -> LunarBirthdayScreen(onBack = { selectedTool = null })
                 Tool.BaZi.title -> BaZiScreen(onBack = { selectedTool = null })
                 Tool.Luopan.title -> LuopanScreen(onBack = { selectedTool = null })
                 Tool.Caliper.title -> CaliperScreen(onBack = { selectedTool = null })
@@ -797,7 +821,7 @@ fun ToolsScreen(
 }
 
 private fun getThemeLabel(scheme: AppThemeScheme): String {
-    return when(scheme) {
+    return when (scheme) {
         AppThemeScheme.DYNAMIC -> "依照系統"
         AppThemeScheme.OCEAN -> "海洋藍"
         AppThemeScheme.PRAIRIE -> "草原綠"
@@ -816,20 +840,20 @@ private fun SectionHeader(title: String, icon: ImageVector) {
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 4.dp)
+            .padding(top = 8.dp, bottom = 4.dp),
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp)
+            modifier = Modifier.size(18.dp),
         )
         Spacer(modifier = Modifier.width(6.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = MaterialTheme.colorScheme.primary,
         )
     }
 }
@@ -839,8 +863,9 @@ fun ToolItem(
     tool: Tool,
     isSmall: Boolean = false,
     isPinned: Boolean = false,
+    badgeCount: Int = 0,
     subtitle: String? = null,
-    onClick: () -> Unit
+    onClick: () -> Unit,
 ) {
     val alpha = if (isPinned) 0.45f else 1.0f
 
@@ -852,16 +877,14 @@ fun ToolItem(
         shadowElevation = if (isPinned) 0.dp else 1.dp,
         modifier = Modifier
             .fillMaxWidth()
-            //系統與工具 卡片的高度
-            // else後面的部分就是專門設置 「實用工具」 高度的
             .then(
-                if (isSmall) Modifier.height(75.dp) else Modifier.height(85.dp)
+                if (isSmall) Modifier.height(75.dp) else Modifier.height(85.dp),
             )
             .border(
-                0.5.dp, 
+                0.5.dp,
                 if (isPinned) MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                RoundedCornerShape(if (isSmall) 16.dp else 20.dp)
-            )
+                RoundedCornerShape(if (isSmall) 16.dp else 20.dp),
+            ),
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -870,14 +893,24 @@ fun ToolItem(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 4.dp, vertical = 4.dp)
-                    .graphicsLayer { this.alpha = alpha }
+                    .graphicsLayer { this.alpha = alpha },
             ) {
-                Icon(
-                    imageVector = tool.icon,
-                    contentDescription = tool.title,
-                    modifier = Modifier.size(if (isSmall) 22.dp else 42.dp),
-                    tint = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary
-                )
+                Box {
+                    Icon(
+                        imageVector = tool.icon,
+                        contentDescription = tool.title,
+                        modifier = Modifier.size(if (isSmall) 22.dp else 42.dp),
+                        tint = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.primary,
+                    )
+                    if (badgeCount > 0) {
+                        RedBadgeNumber(
+                            count = badgeCount,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .offset(x = 6.dp, y = 4.dp)
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(if (isSmall) 2.dp else 6.dp))
                 Text(
                     text = tool.title,
@@ -886,7 +919,7 @@ fun ToolItem(
                     color = if (isPinned) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
                 if (subtitle != null) {
                     Spacer(modifier = Modifier.height(1.dp))
@@ -896,7 +929,7 @@ fun ToolItem(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Medium,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
@@ -905,24 +938,24 @@ fun ToolItem(
                 Surface(
                     shape = RoundedCornerShape(topEnd = if (isSmall) 16.dp else 20.dp, bottomStart = 8.dp),
                     color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.85f),
-                    modifier = Modifier.align(Alignment.TopEnd)
+                    modifier = Modifier.align(Alignment.TopEnd),
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
                             imageVector = Icons.Default.PinDrop,
                             contentDescription = "已在底欄",
                             tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                            modifier = Modifier.size(10.dp)
+                            modifier = Modifier.size(10.dp),
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Text(
                             text = "底欄",
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
                         )
                     }
                 }

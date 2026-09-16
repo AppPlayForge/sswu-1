@@ -101,10 +101,6 @@ object BaZiManager {
         saveList(context, list)
     }
 
-    fun deleteRecord(context: Context, id: Long) {
-        moveToTrash(context, id)
-    }
-
     fun togglePinRecord(context: Context, id: Long): List<BaZiRecord> {
         val list = loadList(context).toMutableList()
         val index = list.indexOfFirst { it.id == id }

@@ -1,30 +1,35 @@
 package com.example.myTools.period
 
 import android.content.Context
+import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.util.*
+import java.util.Calendar
 
 data class PeriodRecord(
     val startDate: Long,
-    val endDate: Long? = null
+    val endDate: Long? = null,
 )
 
 class PeriodDataManager(context: Context? = null) {
     private val prefs = context?.getSharedPreferences("period_prefs", Context.MODE_PRIVATE)
     private val gson = Gson()
+    private val recordListType = object : TypeToken<List<PeriodRecord>>() {}.type
 
     fun getRecords(): List<PeriodRecord> {
         val json = prefs?.getString("records", "[]") ?: "[]"
-        val type = object : TypeToken<List<PeriodRecord>>() {}.type
-        val records: List<PeriodRecord> = gson.fromJson(json, type) ?: emptyList()
+        val records: List<PeriodRecord> = try {
+            gson.fromJson(json, recordListType) ?: emptyList()
+        } catch (_: Exception) {
+            emptyList()
+        }
         return records.sortedByDescending { it.startDate }
     }
 
     fun saveRecords(records: List<PeriodRecord>) {
         val sorted = records.sortedByDescending { it.startDate }
         val json = gson.toJson(sorted)
-        prefs?.edit()?.putString("records", json)?.apply()
+        prefs?.edit { putString("records", json) }
     }
 
     fun addRecord(startDate: Long, endDate: Long? = null) {
@@ -35,8 +40,11 @@ class PeriodDataManager(context: Context? = null) {
 
     fun updateRecord(oldRecord: PeriodRecord, newRecord: PeriodRecord) {
         val records = getRecords().toMutableList()
-        val index = records.indexOfFirst {
+        var index = records.indexOfFirst {
             it.startDate == oldRecord.startDate && it.endDate == oldRecord.endDate
+        }
+        if (index == -1) {
+            index = records.indexOfFirst { it.startDate == oldRecord.startDate }
         }
         if (index != -1) {
             records[index] = newRecord
@@ -48,7 +56,7 @@ class PeriodDataManager(context: Context? = null) {
         val records = getRecords().toMutableList()
         if (records.isNotEmpty()) {
             val last = records[0]
-            if (last.endDate == null) {
+            if (endDate >= last.startDate) {
                 records[0] = last.copy(endDate = endDate)
                 saveRecords(records)
             }
@@ -103,10 +111,10 @@ class PeriodDataManager(context: Context? = null) {
      */
     fun predictNextPeriod(records: List<PeriodRecord>): Long? {
         if (records.isEmpty()) return null
-        
+
         val lastStart = normalizeToStartOfDay(records.maxOf { it.startDate })
         val avgLength = getAverageCycleLength(records)
-        
+
         val calendar = Calendar.getInstance()
         calendar.timeInMillis = lastStart
         calendar.add(Calendar.DAY_OF_YEAR, avgLength)
@@ -114,36 +122,28 @@ class PeriodDataManager(context: Context? = null) {
     }
 
     /**
-     * 獲取狀態提示文字
+     * 獲取不早於今天的下一次預測月經開始日期
      */
-    fun getPeriodStatus(todayMillis: Long, records: List<PeriodRecord>): String {
-        if (records.isEmpty()) return "尚無記錄"
-        
-        val today = normalizeToStartOfDay(todayMillis)
-        val sortedAsc = records.sortedBy { it.startDate }
-        val last = sortedAsc.last()
-        val lastStart = normalizeToStartOfDay(last.startDate)
+    fun getUpcomingNextPeriod(records: List<PeriodRecord>): Long? {
+        if (records.isEmpty()) return null
+        val today = normalizeToStartOfDay(System.currentTimeMillis())
+        var predicted = predictNextPeriod(records) ?: return null
+        val avgCycle = getAverageCycleLength(records)
 
-        // 檢查今天是否在最後一次月經期內
-        val lastEnd = last.endDate?.let { normalizeToStartOfDay(it) }
-        if (lastEnd != null) {
-            if (today in lastStart..lastEnd) {
-                val days = (today - lastStart) / DAY_IN_MILLIS + 1
-                return "月經第 ${days} 天"
-            }
-        } else if (today >= lastStart) {
-            val days = (today - lastStart) / DAY_IN_MILLIS + 1
-            return "月經第 ${days} 天"
+        while (predicted < today) {
+            predicted += avgCycle.toLong() * DAY_IN_MILLIS
         }
-        
-        val nextMillis = predictNextPeriod(records) ?: return "數據不足"
-        val next = normalizeToStartOfDay(nextMillis)
-        val daysUntil = (next - today) / DAY_IN_MILLIS
-        return when {
-            daysUntil > 0 -> "距離下次月經還有 ${daysUntil} 天"
-            daysUntil == 0L -> "預計月經今天到來"
-            else -> "預計月經已延遲 ${-daysUntil} 天"
-        }
+        return predicted
+    }
+
+    /**
+     * 計算距離下一次預測月經來臨還有多少天 (0=今天, 1=明天, 2=後天, 3=大後天)
+     */
+    fun getDaysUntilNextPeriod(records: List<PeriodRecord>): Int? {
+        val nextStart = getUpcomingNextPeriod(records) ?: return null
+        val today = normalizeToStartOfDay(System.currentTimeMillis())
+        val diffMillis = nextStart - today
+        return (diffMillis / DAY_IN_MILLIS).toInt()
     }
 
     fun normalizeToStartOfDay(millis: Long): Long {
@@ -162,7 +162,7 @@ class PeriodDataManager(context: Context? = null) {
      */
     fun getCurrentPhase(dateMillis: Long, records: List<PeriodRecord>): Int {
         if (records.isEmpty()) return 0
-        
+
         val targetDay = normalizeToStartOfDay(dateMillis)
         val sortedAsc = records.sortedBy { it.startDate }
         val avgCycle = getAverageCycleLength(records)
@@ -192,12 +192,12 @@ class PeriodDataManager(context: Context? = null) {
         for (i in 0 until sortedAsc.size - 1) {
             val startCurrent = normalizeToStartOfDay(sortedAsc[i].startDate)
             val startNext = normalizeToStartOfDay(sortedAsc[i + 1].startDate)
-            
+
             if (targetDay in startCurrent until startNext) {
                 val ovulationDay = startNext - 14 * DAY_IN_MILLIS
                 val fertileStart = ovulationDay - 5 * DAY_IN_MILLIS
                 val fertileEnd = ovulationDay + 3 * DAY_IN_MILLIS
-                
+
                 return if (targetDay in fertileStart..fertileEnd) 1 else 0
             }
         }
@@ -207,12 +207,12 @@ class PeriodDataManager(context: Context? = null) {
         if (targetDay >= lastStart) {
             val diffDays = (targetDay - lastStart) / DAY_IN_MILLIS
             val cycleIndex = (diffDays / avgCycle).toInt()
-            
-            val currentCycleStart = lastStart + cycleIndex * avgCycle * DAY_IN_MILLIS
-            val nextCycleStart = currentCycleStart + avgCycle * DAY_IN_MILLIS
-            
+
+            val currentCycleStart = lastStart + cycleIndex.toLong() * avgCycle * DAY_IN_MILLIS
+            val nextCycleStart = currentCycleStart + avgCycle.toLong() * DAY_IN_MILLIS
+
             if (cycleIndex >= 1) {
-                val predEnd = currentCycleStart + (avgPeriod - 1) * DAY_IN_MILLIS
+                val predEnd = currentCycleStart + (avgPeriod - 1).toLong() * DAY_IN_MILLIS
                 if (targetDay in currentCycleStart..predEnd) return 3
             }
 
@@ -228,9 +228,9 @@ class PeriodDataManager(context: Context? = null) {
         if (targetDay < firstStart) {
             val daysBefore = (firstStart - targetDay) / DAY_IN_MILLIS
             val cyclesBack = ((daysBefore + avgCycle - 1) / avgCycle).toInt()
-            
-            val estCycleStart = firstStart - cyclesBack * avgCycle * DAY_IN_MILLIS
-            val estNextCycleStart = estCycleStart + avgCycle * DAY_IN_MILLIS
+
+            val estCycleStart = firstStart - cyclesBack.toLong() * avgCycle * DAY_IN_MILLIS
+            val estNextCycleStart = estCycleStart + avgCycle.toLong() * DAY_IN_MILLIS
 
             val ovulationDay = estNextCycleStart - 14 * DAY_IN_MILLIS
             val fertileStart = ovulationDay - 5 * DAY_IN_MILLIS

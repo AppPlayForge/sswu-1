@@ -2,13 +2,11 @@ package com.example.myTools.note
 
 import android.content.ContentValues
 import android.content.Context
-import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import androidx.core.content.edit
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -19,6 +17,7 @@ object NoteManager {
     private const val KEY_TRASH_LIST = "note_trash_list"
     private const val KEY_IS_GRID_VIEW = "is_grid_view"
     private val gson = Gson()
+    private val noteListType = object : TypeToken<List<NoteRecord>>() {}.type
 
     fun isGridView(context: Context): Boolean {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
@@ -33,9 +32,8 @@ object NoteManager {
     fun loadList(context: Context): List<NoteRecord> {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val json = prefs.getString(KEY_LIST, null) ?: return emptyList()
-        val type = object : TypeToken<List<NoteRecord>>() {}.type
         return try {
-            gson.fromJson<List<NoteRecord>>(json, type) ?: emptyList()
+            gson.fromJson<List<NoteRecord>>(json, noteListType) ?: emptyList()
         } catch (_: Exception) {
             emptyList()
         }
@@ -50,9 +48,8 @@ object NoteManager {
     fun loadTrashList(context: Context): List<NoteRecord> {
         val prefs = context.getSharedPreferences(PREF_NAME, Context.MODE_PRIVATE)
         val json = prefs.getString(KEY_TRASH_LIST, null) ?: return emptyList()
-        val type = object : TypeToken<List<NoteRecord>>() {}.type
         return try {
-            gson.fromJson<List<NoteRecord>>(json, type) ?: emptyList()
+            gson.fromJson<List<NoteRecord>>(json, noteListType) ?: emptyList()
         } catch (_: Exception) {
             emptyList()
         }
@@ -126,11 +123,6 @@ object NoteManager {
         return updated
     }
 
-    fun deleteRecord(context: Context, id: Long) {
-        val list = loadList(context).filter { it.id != id }
-        saveList(context, list)
-    }
-
     fun togglePinRecord(context: Context, id: Long) {
         val list = loadList(context).toMutableList()
         val index = list.indexOfFirst { it.id == id }
@@ -145,39 +137,13 @@ object NoteManager {
      * 將單個筆記以 Windows TXT 格式另存到手機下載文件夾 (Downloads)
      */
     fun saveNoteToDownloads(context: Context, note: NoteRecord): String? {
-        val rawTitle = if (note.title.isNotBlank()) note.title else "未命名筆記"
+        val rawTitle = note.title.ifBlank { "未命名筆記" }
         val sanitizedTitle = rawTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_").trim()
         val dateSuffix = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date(note.updatedAt))
         val fileName = "${sanitizedTitle}_$dateSuffix.txt"
         val textContent = note.toTxtString()
 
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                }
-                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                if (uri != null) {
-                    context.contentResolver.openOutputStream(uri)?.use { os ->
-                        os.write(textContent.toByteArray(Charsets.UTF_8))
-                    }
-                    fileName
-                } else null
-            } else {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!downloadsDir.exists()) {
-                    downloadsDir.mkdirs()
-                }
-                val file = File(downloadsDir, fileName)
-                file.writeText(textContent, Charsets.UTF_8)
-                fileName
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-            null
-        }
+        return writeTextFileToDownloads(context, fileName, textContent)
     }
 
     /**
@@ -202,8 +168,8 @@ object NoteManager {
             sb.append("# NOTE_START: ").append(note.title.ifBlank { "未命名筆記 ${index + 1}" }).append("\r\n")
             sb.append("# CREATED: ").append(note.createdAt).append("\r\n")
             sb.append("# UPDATED: ").append(note.updatedAt).append("\r\n")
-            if (note.colorHex != null) {
-                sb.append("# COLOR: ").append(note.colorHex).append("\r\n")
+            note.colorHex?.let { color ->
+                sb.append("# COLOR: ").append(color).append("\r\n")
             }
             sb.append("# CONTENT:\r\n")
             val formattedContent = note.content.replace("\r\n", "\n").replace("\n", "\r\n")
@@ -211,30 +177,27 @@ object NoteManager {
             sb.append("# NOTE_END\r\n\r\n")
         }
 
-        val textContent = sb.toString()
+        return writeTextFileToDownloads(context, fileName, sb.toString())
+    }
 
+    /**
+     * 通用 MediaStore 寫入 Downloads 目錄輔助函式
+     */
+    private fun writeTextFileToDownloads(context: Context, fileName: String, textContent: String): String? {
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val values = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-                    put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            val values = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+            if (uri != null) {
+                context.contentResolver.openOutputStream(uri)?.use { os ->
+                    os.write(textContent.toByteArray(Charsets.UTF_8))
                 }
-                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                if (uri != null) {
-                    context.contentResolver.openOutputStream(uri)?.use { os ->
-                        os.write(textContent.toByteArray(Charsets.UTF_8))
-                    }
-                    fileName
-                } else null
-            } else {
-                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                if (!downloadsDir.exists()) {
-                    downloadsDir.mkdirs()
-                }
-                val file = File(downloadsDir, fileName)
-                file.writeText(textContent, Charsets.UTF_8)
                 fileName
+            } else {
+                null
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -291,7 +254,7 @@ object NoteManager {
                     content = contentBuilder.toString(),
                     createdAt = createdAt,
                     updatedAt = updatedAt,
-                    colorHex = colorHex
+                    colorHex = colorHex,
                 )
                 existingNotes.add(0, newNote)
                 count++
@@ -304,7 +267,7 @@ object NoteManager {
             val firstLine = lines.firstOrNull()?.trim() ?: ""
 
             val (title, content) = if (firstLine.isNotEmpty() && firstLine.length <= 60 && lines.size > 1) {
-                Pair(firstLine, lines.drop(1).joinToString("\n").trim())
+                Pair(firstLine, lines.asSequence().drop(1).joinToString("\n").trim())
             } else if (firstLine.isNotEmpty() && lines.size == 1) {
                 Pair(defaultTitle, firstLine)
             } else {
@@ -316,7 +279,7 @@ object NoteManager {
                 title = title,
                 content = content,
                 createdAt = System.currentTimeMillis(),
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
             )
             existingNotes.add(0, newNote)
             importedCount = 1

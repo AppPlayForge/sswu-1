@@ -9,41 +9,58 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CloudSync
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.example.myTools.utils.AppBadgeManager
 import androidx.core.content.ContextCompat
 import com.example.myTools.MainActivity
 import com.example.myTools.tools.AppSettingsDialog
@@ -71,22 +88,66 @@ import com.example.myTools.ui.ShareAppMenuItem
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun LunarBirthdayScreen() {
+fun LunarBirthdayScreen(
+    onBack: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val alarmManager = remember { context.getSystemService(Context.ALARM_SERVICE) as AlarmManager }
 
     // 持久化數據狀態
     var birthdayList by remember { mutableStateOf(BirthdayManager.loadList(context)) }
 
+    // 刷新全局紅點狀態
+    LaunchedEffect(birthdayList) {
+        AppBadgeManager.refreshBirthdayBadges(context)
+    }
+
     // 搜索狀態
     var isSearchActive by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
 
     val filteredList = remember(searchQuery, birthdayList) {
-        if (searchQuery.isEmpty()) {
+        val list = if (searchQuery.isEmpty()) {
             birthdayList
         } else {
             birthdayList.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        }
+        list.sortedWith(
+            compareBy<BirthdayRecord> {
+                getNextBirthdayCalendar(it.lunarMonth, it.lunarDay).timeInMillis
+            }.thenBy { it.name }
+        )
+    }
+
+    // 滾動與 FAB 顯示狀態
+    val listState = rememberLazyListState()
+    var isFabVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(listState) {
+        var previousIndex = listState.firstVisibleItemIndex
+        var previousOffset = listState.firstVisibleItemScrollOffset
+
+        snapshotFlow {
+            Triple(listState.isScrollInProgress, listState.firstVisibleItemIndex, listState.firstVisibleItemScrollOffset)
+        }.collect { (isScrollInProgress, currentIndex, currentOffset) ->
+            if (currentIndex == 0 && currentOffset == 0) {
+                isFabVisible = true
+            } else if (isScrollInProgress) {
+                if (currentIndex > previousIndex) {
+                    isFabVisible = false
+                } else if (currentIndex < previousIndex) {
+                    isFabVisible = true
+                } else {
+                    val diff = currentOffset - previousOffset
+                    if (diff > 12) {
+                        isFabVisible = false
+                    } else if (diff < -12) {
+                        isFabVisible = true
+                    }
+                }
+            }
+            previousIndex = currentIndex
+            previousOffset = currentOffset
         }
     }
 
@@ -112,13 +173,7 @@ fun LunarBirthdayScreen() {
 
     // 檢查並提示權限
     LaunchedEffect(Unit) {
-        val hasNotificationPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
-        } else true
-
+        val hasNotificationPermission = AppBadgeManager.hasNotificationPermission(context)
         val canScheduleExactAlarms = alarmManager.canScheduleExactAlarms()
 
         if (!hasNotificationPermission || !canScheduleExactAlarms) {
@@ -138,6 +193,8 @@ fun LunarBirthdayScreen() {
         }
     }
 
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+
     Scaffold(
         topBar = {
             BlurryContainer(isBlur = isAnyDialogOpen) {
@@ -149,30 +206,16 @@ fun LunarBirthdayScreen() {
                     onQueryChange = { searchQuery = it },
                     navigationIcon = {
                         IconButton(onClick = {
-                            // 檢查通知權限 (Android 13+)
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                when (ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.POST_NOTIFICATIONS
-                                )) {
-                                    PackageManager.PERMISSION_GRANTED -> {
-                                        sendTestNotification(context)
-                                    }
-
-                                    else -> {
-                                        // 彈出權限申請
-                                        permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                }
+                            if (onBack != null) {
+                                onBack()
                             } else {
-                                // Android 13 以下版本通常預設開啟或由系統管理
-                                sendTestNotification(context)
+                                backDispatcher?.onBackPressed()
                             }
                         }) {
                             Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "測試通知",
-                                tint = MaterialTheme.colorScheme.primary // 適配主題色
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     },
@@ -189,6 +232,37 @@ fun LunarBirthdayScreen() {
                                 expanded = menuExpanded,
                                 onDismissRequest = { menuExpanded = false }
                             ) {
+                                DropdownMenuItem(
+                                    text = { Text("測試通知") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        // 檢查通知權限 (Android 13+)
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            when (ContextCompat.checkSelfPermission(
+                                                context,
+                                                Manifest.permission.POST_NOTIFICATIONS
+                                            )) {
+                                                PackageManager.PERMISSION_GRANTED -> {
+                                                    sendTestNotification(context)
+                                                }
+
+                                                else -> {
+                                                    // 彈出權限申請
+                                                    permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                                }
+                                            }
+                                        } else {
+                                            // Android 13 以下版本通常預設開啟或由系統管理
+                                            sendTestNotification(context)
+                                        }
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = Icons.Default.Notifications,
+                                            contentDescription = "測試通知"
+                                        )
+                                    }
+                                )
                                 DataManagementMenuItem(
                                     onClick = {
                                         menuExpanded = false
@@ -211,28 +285,34 @@ fun LunarBirthdayScreen() {
             }
         },
         floatingActionButton = {
-            BlurryContainer(isBlur = isAnyDialogOpen) {
-                Surface(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .combinedClickable(
-                            onClick = {
-                                editingRecord = null
-                                showAddDialog = true
-                            }
-                        ),
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    tonalElevation = 6.dp,
-                    shadowElevation = 8.dp
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Rounded.Add,
-                            contentDescription = "新增",
-                            modifier = Modifier.size(36.dp),
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+            AnimatedVisibility(
+                visible = isFabVisible,
+                enter = fadeIn() + scaleIn(),
+                exit = fadeOut() + scaleOut()
+            ) {
+                BlurryContainer(isBlur = isAnyDialogOpen) {
+                    Surface(
+                        modifier = Modifier
+                            .size(96.dp)
+                            .combinedClickable(
+                                onClick = {
+                                    editingRecord = null
+                                    showAddDialog = true
+                                }
+                            ),
+                        shape = RoundedCornerShape(28.dp),
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        tonalElevation = 6.dp,
+                        shadowElevation = 8.dp
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = "新增",
+                                modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
                     }
                 }
             }
@@ -261,6 +341,7 @@ fun LunarBirthdayScreen() {
                     }
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -349,6 +430,7 @@ fun LunarBirthdayScreen() {
 
                         BirthdayManager.addOrUpdateRecord(context, record)
                         birthdayList = BirthdayManager.loadList(context)
+                        AppBadgeManager.refreshBirthdayBadges(context)
 
                         showAddDialog = false
                         editingRecord = null
@@ -372,6 +454,7 @@ fun LunarBirthdayScreen() {
                     onConfirm = {
                         BirthdayManager.deleteRecord(context, recordToDelete!!.id)
                         birthdayList = BirthdayManager.loadList(context)
+                        AppBadgeManager.refreshBirthdayBadges(context)
                         recordToDelete = null
                     }
                 )

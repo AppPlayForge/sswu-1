@@ -11,7 +11,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -90,13 +89,8 @@ fun SupportScreen(modifier: Modifier = Modifier) {
 
 @Composable
 fun SupportSection(context: Context) {
-    var wechatExpanded by rememberSaveable { mutableStateOf(true) }
     var cryptoExpanded by rememberSaveable { mutableStateOf(false) }
 
-    val wechatRotation by animateFloatAsState(
-        targetValue = if (wechatExpanded) 180f else 0f,
-        label = "wechatRotation"
-    )
     val cryptoRotation by animateFloatAsState(
         targetValue = if (cryptoExpanded) 180f else 0f,
         label = "cryptoRotation"

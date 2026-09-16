@@ -3,7 +3,6 @@ package com.example.myTools.note
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -57,7 +56,6 @@ import androidx.compose.ui.window.DialogProperties
 
 @Composable
 fun TxtEditorDialog(
-    uri: Uri,
     fileName: String,
     initialContent: String,
     onDismiss: () -> Unit,

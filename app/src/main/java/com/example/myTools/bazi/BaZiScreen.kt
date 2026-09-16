@@ -3,7 +3,6 @@ package com.example.myTools.bazi
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -26,14 +25,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,10 +71,6 @@ fun BaZiScreen(
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(Unit) {
-        viewModel.loadData(context)
-    }
 
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -256,7 +246,7 @@ fun BaZiScreen(
                                     record = record,
                                     onClick = { viewModel.selectRecord(record) },
                                     onTogglePin = {
-                                        val isPinnedNow = viewModel.togglePin(context, record.id)
+                                        val isPinnedNow = viewModel.togglePin(record.id)
                                         Toast.makeText(
                                             context,
                                             if (isPinnedNow) "已置頂 ${record.name}" else "已取消置頂 ${record.name}",
@@ -293,7 +283,7 @@ fun BaZiScreen(
                                     record = record,
                                     onClick = { viewModel.selectRecord(record) },
                                     onTogglePin = {
-                                        val isPinnedNow = viewModel.togglePin(context, record.id)
+                                        val isPinnedNow = viewModel.togglePin(record.id)
                                         Toast.makeText(
                                             context,
                                             if (isPinnedNow) "已置頂 ${record.name}" else "已取消置頂 ${record.name}",
@@ -327,7 +317,7 @@ fun BaZiScreen(
     if (uiState.activeDialog == BaZiDialogType.ADD) {
         AddBaZiDialog(
             onDismiss = { viewModel.showDialog(null) },
-            onSave = { viewModel.saveRecord(context, it) }
+            onSave = { viewModel.saveRecord(it) }
         )
     }
 
@@ -338,7 +328,7 @@ fun BaZiScreen(
     if (uiState.activeDialog == BaZiDialogType.DATA_MANAGEMENT) {
         DataManagementDialog(onDismiss = {
             viewModel.showDialog(null)
-            viewModel.loadData(context)
+            viewModel.loadData()
         })
     }
 
@@ -346,7 +336,7 @@ fun BaZiScreen(
         AddBaZiDialog(
             initialRecord = record,
             onDismiss = { viewModel.editRecord(null) },
-            onSave = { viewModel.saveRecord(context, it) }
+            onSave = { viewModel.saveRecord(it) }
         )
     }
 
@@ -355,7 +345,7 @@ fun BaZiScreen(
             message = "要將 ${record.name} 的八字紀錄移至回收站嗎？",
             onDismiss = { viewModel.confirmDeleteRecord(null) },
             onConfirm = {
-                viewModel.moveToTrash(context, record.id)
+                viewModel.moveToTrash(record.id)
                 Toast.makeText(context, "已將 ${record.name} 移至回收站", Toast.LENGTH_SHORT).show()
             }
         )
@@ -375,7 +365,7 @@ fun BaZiScreen(
             allAppTags = uiState.allUniqueTags,
             onDismiss = { viewModel.manageTagsRecord(null) },
             onSaveTags = { updatedTags ->
-                viewModel.saveTags(context, record, updatedTags)
+                viewModel.saveTags(record, updatedTags)
             }
         )
     }
@@ -400,15 +390,15 @@ fun BaZiScreen(
             trashedItems = trashedItems,
             onDismiss = { viewModel.showDialog(null) },
             onRestore = { trashedItem ->
-                viewModel.restoreFromTrash(context, trashedItem.id)
+                viewModel.restoreFromTrash(trashedItem.id)
                 Toast.makeText(context, "已還原 ${trashedItem.rawItem.name}", Toast.LENGTH_SHORT).show()
             },
             onPermanentlyDelete = { trashedItem ->
-                viewModel.permanentlyDeleteFromTrash(context, trashedItem.id)
+                viewModel.permanentlyDeleteFromTrash(trashedItem.id)
                 Toast.makeText(context, "已徹底刪除 ${trashedItem.rawItem.name}", Toast.LENGTH_SHORT).show()
             },
             onEmptyTrash = {
-                viewModel.emptyTrash(context)
+                viewModel.emptyTrash()
                 Toast.makeText(context, "已清空回收站", Toast.LENGTH_SHORT).show()
             }
         )

@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.nlf.calendar.EightChar
 import com.nlf.calendar.Lunar
 import com.nlf.calendar.Solar
 import com.nlf.calendar.util.LunarUtil

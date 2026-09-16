@@ -14,6 +14,8 @@ class AppPreferences(context: Context) {
         private const val KEY_WAKE_LOCK_MODE = "wake_lock_mode"
         // 為底欄標籤定義一個 Key
         private const val KEY_BOTTOM_BAR_SLOTS = "bottom_bar_slots"
+        private const val KEY_LAST_ROUTE = "last_route"
+        private const val KEY_AUTO_REOPEN_PERMISSION_DIALOG = "auto_reopen_permission_dialog"
         val DEFAULT_BOTTOM_BAR_SLOTS = listOf("almanac", "note", "birthday")
     }
 
@@ -68,6 +70,26 @@ class AppPreferences(context: Context) {
             return DEFAULT_BOTTOM_BAR_SLOTS
         }
         val list = saved.split(",").mapNotNull { s -> s.trim().takeIf { it.isNotEmpty() } }
-        return if (list.size == 3) list else DEFAULT_BOTTOM_BAR_SLOTS
+        return if (list.isNotEmpty() && list.size <= 3) list else DEFAULT_BOTTOM_BAR_SLOTS
+    }
+
+    // 保存上一次進入的頁面路由
+    fun saveLastRoute(route: String) {
+        sharedPreferences.edit { putString(KEY_LAST_ROUTE, route) }
+    }
+
+    // 獲取上一次進入的頁面路由
+    fun getLastRoute(): String? {
+        return sharedPreferences.getString(KEY_LAST_ROUTE, null)
+    }
+
+    // 設定是否在返回 App 時自動重新開啟權限申請對話框
+    fun setAutoReopenPermissionDialog(reopen: Boolean) {
+        sharedPreferences.edit { putBoolean(KEY_AUTO_REOPEN_PERMISSION_DIALOG, reopen) }
+    }
+
+    // 檢查並獲取是否需要自動重新開啟權限對話框
+    fun shouldAutoReopenPermissionDialog(): Boolean {
+        return sharedPreferences.getBoolean(KEY_AUTO_REOPEN_PERMISSION_DIALOG, false)
     }
 }

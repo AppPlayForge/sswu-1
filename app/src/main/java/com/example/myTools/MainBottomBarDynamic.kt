@@ -2,10 +2,10 @@ package com.example.myTools
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -42,22 +43,21 @@ import androidx.compose.material.icons.outlined.Explore
 import androidx.compose.material.icons.outlined.HomeRepairService
 import androidx.compose.material.icons.outlined.Speed
 import androidx.compose.material.icons.outlined.Straighten
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,6 +65,9 @@ import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.myTools.carspeed.AppPreferences
+import com.example.myTools.ui.RedBadgeNumber
+import com.example.myTools.utils.AppBadgeManager
 
 sealed class BottomBarScreen(
     val route: String,
@@ -132,8 +135,21 @@ fun MainBottomBarDynamic(
         BottomBarScreen.Tools
     )
 ) {
+    val context = LocalContext.current
+    val appPreferences = remember { AppPreferences(context) }
+    val bottomBarSlots = remember { appPreferences.getBottomBarSlots() }
+
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+
+    val upcomingBirthdayCount by AppBadgeManager.upcomingBirthdayCount.collectAsState()
+    val upcomingPeriodCount by AppBadgeManager.upcomingPeriodCount.collectAsState()
+    val isCarSpeedRecording by AppBadgeManager.isCarSpeedRecording.collectAsState()
+
+    LaunchedEffect(Unit) {
+        AppBadgeManager.refreshBirthdayBadges(context)
+        AppBadgeManager.refreshPeriodBadges(context)
+    }
 
     Box(
         modifier = Modifier
@@ -158,10 +174,18 @@ fun MainBottomBarDynamic(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 screens.forEach { screen ->
+                    val badgeCount = AppBadgeManager.getBadgeCountForRoute(
+                        route = screen.route,
+                        bottomBarSlots = bottomBarSlots,
+                        upcomingBirthdayCount = upcomingBirthdayCount,
+                        isCarSpeedRecording = isCarSpeedRecording,
+                        upcomingPeriodCount = upcomingPeriodCount
+                    )
                     AddItem(
                         screen = screen,
                         currentDestination = currentDestination,
-                        navController = navController
+                        navController = navController,
+                        badgeCount = badgeCount
                     )
                 }
             }
@@ -173,64 +197,48 @@ fun MainBottomBarDynamic(
 fun RowScope.AddItem(
     screen: BottomBarScreen,
     currentDestination: NavDestination?,
-    navController: NavHostController
+    navController: NavHostController,
+    badgeCount: Int = 0
 ) {
     val isSelected = currentDestination?.hierarchy?.any { it.route == screen.route } == true
-    
+
     // 1. 色彩轉場
     val backgroundColor by animateColorAsState(
         targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+        animationSpec = tween(durationMillis = 200),
         label = "bgColor"
     )
     val contentColor by animateColorAsState(
         targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(durationMillis = 200),
         label = "contentColor"
     )
 
-    // 2. 彈跳縮放
+    // 2. 縮放動畫 (輕微縮放，使用 GPU graphicsLayer 避免觸發重新測量 layout)
     val scale by animateFloatAsState(
-        targetValue = if (isSelected) 1.1f else 1.0f,
+        targetValue = if (isSelected) 1.08f else 1.0f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessLow
+            stiffness = Spring.StiffnessMediumLow
         ),
         label = "scale"
-    )
-
-    // 3. 搖擺效果 (Wobble)
-    val rotation = remember { Animatable(0f) }
-    LaunchedEffect(isSelected) {
-        if (isSelected) {
-            rotation.animateTo(
-                targetValue = 10f,
-                animationSpec = spring(dampingRatio = 0.3f, stiffness = Spring.StiffnessLow)
-            )
-            rotation.animateTo(
-                targetValue = 0f,
-                animationSpec = spring(dampingRatio = 0.3f, stiffness = Spring.StiffnessLow)
-            )
-        }
-    }
-
-    // 4. 動態寬度 (Weight)
-    val weight by animateFloatAsState(
-        targetValue = if (isSelected) 1.5f else 1f,
-        label = "weight"
     )
 
     Box(
         modifier = Modifier
             .height(48.dp)
-            .weight(weight)
+            .weight(1f)
             .background(color = backgroundColor, shape = RoundedCornerShape(24.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
-                indication = null // 去除默認漣漪
+                indication = null // 去除預設漣漪
             ) {
-                navController.navigate(screen.route) {
-                    popUpTo(navController.graph.startDestinationId) { saveState = true }
-                    launchSingleTop = true
-                    restoreState = true
+                if (!isSelected) {
+                    navController.navigate(screen.route) {
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
                 }
             },
         contentAlignment = Alignment.Center
@@ -238,20 +246,10 @@ fun RowScope.AddItem(
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
-            modifier = Modifier.padding(horizontal = 8.dp)
+            modifier = Modifier.padding(horizontal = 4.dp)
         ) {
-            BadgedBox(
-                badge = {
-                    if (screen.badgeCount != null) {
-                        Badge(
-                            containerColor = Color.Red,
-                            contentColor = Color.White
-                        ) {
-                            val badgeText = if (screen.badgeCount > 99) "99+" else screen.badgeCount.toString()
-                            Text(badgeText)
-                        }
-                    }
-                }
+            Box(
+                contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
@@ -259,25 +257,34 @@ fun RowScope.AddItem(
                     tint = contentColor,
                     modifier = Modifier
                         .size(24.dp)
-                        .scale(scale)
                         .graphicsLayer {
-                            rotationZ = rotation.value
+                            scaleX = scale
+                            scaleY = scale
                         }
                 )
+
+                if (badgeCount > 0) {
+                    RedBadgeNumber(
+                        count = badgeCount,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .offset(x = 6.dp, y = 4.dp)
+                    )
+                }
             }
-            
-            // 5. 文字伸縮
+
+            // 3. 文字漸變與滑動（使用 200ms tween 確保動畫流暢快速）
             AnimatedVisibility(
                 visible = isSelected,
-                enter = fadeIn() + expandHorizontally(),
-                exit = fadeOut() + shrinkHorizontally()
+                enter = fadeIn(animationSpec = tween(180)) + expandHorizontally(animationSpec = tween(180)),
+                exit = fadeOut(animationSpec = tween(180)) + shrinkHorizontally(animationSpec = tween(180))
             ) {
                 Text(
                     text = screen.title,
                     color = contentColor,
-                    fontSize = 14.sp,
+                    fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 8.dp),
+                    modifier = Modifier.padding(start = 4.dp),
                     maxLines = 1
                 )
             }

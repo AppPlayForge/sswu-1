@@ -11,12 +11,12 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -32,21 +32,17 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Tag
 import androidx.compose.material.icons.outlined.CheckBoxOutlineBlank
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -62,8 +58,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -80,13 +78,16 @@ fun NoteEditDialog(
 ) {
     val isDark = isSystemInDarkTheme()
     var title by remember { mutableStateOf(note.title) }
-    var content by remember { mutableStateOf(note.content) }
+    var contentValue by remember {
+        mutableStateOf(TextFieldValue(text = note.content, selection = TextRange(note.content.length)))
+    }
     var isPinned by remember { mutableStateOf(note.isPinned) }
     var selectedColorHex by remember { mutableStateOf(note.colorHex ?: "") }
     var isChecklist by remember { mutableStateOf(note.isChecklist) }
     var checklistItems by remember { mutableStateOf(note.checklistItems) }
     var isCompletedExpanded by remember { mutableStateOf(true) }
     var focusTargetItemId by remember { mutableStateOf<String?>(null) }
+    val contentFocusRequester = remember { FocusRequester() }
 
     fun addNewChecklistItemAfter(currentItem: ChecklistItem? = null) {
         val newItem = ChecklistItem()
@@ -109,11 +110,11 @@ fun NoteEditDialog(
         else -> MaterialTheme.colorScheme.surfaceContainerHigh
     }
 
-    val detectedTags = remember(title, content, isChecklist, checklistItems) {
+    val detectedTags = remember(title, contentValue.text, isChecklist, checklistItems) {
         val fullText = if (isChecklist) {
-            "$title ${checklistItems.joinToString(" ") { it.text }} $content"
+            "$title ${checklistItems.joinToString(" ") { it.text }} ${contentValue.text}"
         } else {
-            "$title $content"
+            "$title ${contentValue.text}"
         }
         NoteRecord.extractHashtags(fullText)
     }
@@ -121,7 +122,7 @@ fun NoteEditDialog(
     fun buildCurrentNote(): NoteRecord {
         return note.copy(
             title = title,
-            content = content,
+            content = contentValue.text,
             isPinned = isPinned,
             colorHex = selectedColorHex.ifEmpty { null },
             isChecklist = isChecklist,
@@ -130,14 +131,14 @@ fun NoteEditDialog(
     }
 
     fun hasContent(): Boolean {
-        return title.isNotBlank() || content.isNotBlank() || checklistItems.any { it.text.isNotBlank() }
+        return title.isNotBlank() || contentValue.text.isNotBlank() || checklistItems.any { it.text.isNotBlank() }
     }
 
     fun toggleChecklistMode() {
         if (!isChecklist) {
             // 切換至清單模式：將原本 content 的各行轉為清單項目
             if (checklistItems.isEmpty()) {
-                val lines = content.lines().map { it.trim() }.filter { it.isNotEmpty() }
+                val lines = contentValue.text.lines().map { it.trim() }.filter { it.isNotEmpty() }
                 if (lines.isNotEmpty()) {
                     checklistItems = lines.map { ChecklistItem(text = it) }
                 } else {
@@ -151,10 +152,38 @@ fun NoteEditDialog(
             isChecklist = true
         } else {
             // 切換回文字模式：將清單項目合併為 content
-            if (content.isBlank() && checklistItems.isNotEmpty()) {
-                content = checklistItems.joinToString("\n") { it.text }
+            if (contentValue.text.isBlank() && checklistItems.isNotEmpty()) {
+                val newText = checklistItems.joinToString("\n") { it.text }
+                contentValue = TextFieldValue(text = newText, selection = TextRange(newText.length))
             }
             isChecklist = false
+        }
+    }
+
+    fun insertTagSymbol() {
+        if (isChecklist) {
+            val newItem = ChecklistItem(text = "#")
+            checklistItems = checklistItems + newItem
+            focusTargetItemId = newItem.id
+        } else {
+            val currentText = contentValue.text
+            val selection = contentValue.selection
+            val cursor = selection.start.coerceIn(0, currentText.length)
+
+            val before = currentText.substring(0, cursor)
+            val after = currentText.substring(cursor)
+
+            val prefix = if (before.isNotEmpty() && !before.endsWith(" ") && !before.endsWith("\n")) " #" else "#"
+            val newText = before + prefix + after
+            val newCursor = before.length + prefix.length
+
+            contentValue = TextFieldValue(
+                text = newText,
+                selection = TextRange(newCursor)
+            )
+            try {
+                contentFocusRequester.requestFocus()
+            } catch (_: Exception) {}
         }
     }
 
@@ -166,20 +195,20 @@ fun NoteEditDialog(
                 onDismiss()
             }
         },
-        properties = DialogProperties(usePlatformDefaultWidth = false)
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false
+        )
     ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .fillMaxHeight(0.85f),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = dialogBg),
-            elevation = CardDefaults.cardElevation(12.dp)
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = dialogBg
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(20.dp)
+                    .systemBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 12.dp)
             ) {
                 // 頂部導航列
                 Row(
@@ -207,18 +236,13 @@ fun NoteEditDialog(
                             )
                         }
 
-                        IconButton(onClick = { isPinned = !isPinned }) {
+                        // 插入 #標籤 按鈕 (移至頂部)
+                        IconButton(onClick = { insertTagSymbol() }) {
                             Icon(
-                                imageVector = if (isPinned) Icons.Default.PushPin else Icons.Outlined.PushPin,
-                                contentDescription = "置頂",
-                                tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                imageVector = Icons.Default.Tag,
+                                contentDescription = "插入 #標籤",
+                                tint = MaterialTheme.colorScheme.primary
                             )
-                        }
-
-                        IconButton(onClick = {
-                            onSaveAsTxt(buildCurrentNote())
-                        }) {
-                            Icon(Icons.Default.Download, contentDescription = "另存為 TXT")
                         }
 
                         if (note.id != 0L) {
@@ -267,9 +291,9 @@ fun NoteEditDialog(
                 Box(modifier = Modifier.weight(1f)) {
                     if (!isChecklist) {
                         TextField(
-                            value = content,
-                            onValueChange = { content = it },
-                            placeholder = { Text("記事文本 (輸入 #標籤 可自動建立分類)...", style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.outline)) },
+                            value = contentValue,
+                            onValueChange = { contentValue = it },
+                            placeholder = { Text("記事文本 (點擊頂部 # 可快速新增標籤)...", style = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.outline)) },
                             textStyle = MaterialTheme.typography.bodyLarge,
                             colors = TextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
@@ -277,7 +301,9 @@ fun NoteEditDialog(
                                 focusedIndicatorColor = Color.Transparent,
                                 unfocusedIndicatorColor = Color.Transparent
                             ),
-                            modifier = Modifier.fillMaxSize()
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .focusRequester(contentFocusRequester)
                         )
                     } else {
                         val uncheckedItems = checklistItems.filter { !it.isChecked }
@@ -517,28 +543,6 @@ fun NoteEditDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    IconButton(
-                        onClick = {
-                            if (isChecklist) {
-                                checklistItems = checklistItems + ChecklistItem(text = "#標籤 ")
-                            } else {
-                                content = if (content.endsWith(" ") || content.isEmpty() || content.endsWith("\n")) {
-                                    "$content#"
-                                } else {
-                                    "$content #"
-                                }
-                            }
-                        },
-                        modifier = Modifier.size(26.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Tag,
-                            contentDescription = "插入 #標籤",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
                     Icon(
                         Icons.Default.Palette,
                         contentDescription = "顏色",
@@ -556,7 +560,7 @@ fun NoteEditDialog(
 
                             Box(
                                 modifier = Modifier
-                                    .size(26.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .background(circleColor)
                                     .border(
@@ -571,7 +575,7 @@ fun NoteEditDialog(
                                     Icon(
                                         Icons.Default.Check,
                                         contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
+                                        modifier = Modifier.size(16.dp),
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
@@ -580,7 +584,7 @@ fun NoteEditDialog(
                     }
 
                     Text(
-                        text = if (isChecklist) "${checklistItems.size} 項" else "${content.length} 字",
+                        text = if (isChecklist) "${checklistItems.size} 項" else "${contentValue.text.length} 字",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

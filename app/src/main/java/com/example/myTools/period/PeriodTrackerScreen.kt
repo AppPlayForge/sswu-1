@@ -1,13 +1,32 @@
 package com.example.myTools.period
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.Intent
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -19,16 +38,39 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -36,6 +78,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import com.example.myTools.utils.AppBadgeManager
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -47,19 +90,28 @@ import com.example.myTools.ui.CommonTopBar
 import com.example.myTools.ui.DataManagementMenuItem
 import com.example.myTools.ui.ShareAppMenuItem
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateTimePickerHandler(
+    initialMillis: Long? = null,
     onDismiss: () -> Unit,
     onDateTimeSelected: (Long) -> Unit
 ) {
     val context = LocalContext.current
-    val calendar = remember { Calendar.getInstance() }
+    val calendar = remember(initialMillis) {
+        Calendar.getInstance().apply {
+            if (initialMillis != null) {
+                timeInMillis = initialMillis
+            }
+        }
+    }
 
     // 先彈出日期選擇
-    DisposableEffect(Unit) {
+    DisposableEffect(initialMillis) {
         val datePickerDialog = DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
@@ -68,17 +120,21 @@ fun DateTimePickerHandler(
                 calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
                 
                 // 接著彈出時間選擇
-                TimePickerDialog(
+                val timePickerDialog = TimePickerDialog(
                     context,
                     { _, hourOfDay, minute ->
                         calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
                         calendar.set(Calendar.MINUTE, minute)
+                        calendar.set(Calendar.SECOND, 0)
+                        calendar.set(Calendar.MILLISECOND, 0)
                         onDateTimeSelected(calendar.timeInMillis)
                     },
                     calendar.get(Calendar.HOUR_OF_DAY),
                     calendar.get(Calendar.MINUTE),
                     true
-                ).show()
+                )
+                timePickerDialog.setOnCancelListener { onDismiss() }
+                timePickerDialog.show()
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
@@ -93,28 +149,50 @@ fun DateTimePickerHandler(
 }
 
 @Composable
-fun PeriodTrackerScreen(onBack: () -> Unit) {
+fun PeriodTrackerScreen(
+    onBack: () -> Unit,
+    viewModel: PeriodViewModel = viewModel()
+) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsState()
     val dataManager = remember { PeriodDataManager(context) }
-    var records by remember { mutableStateOf(dataManager.getRecords()) }
-    val today = System.currentTimeMillis()
-    
-    val phase = dataManager.getCurrentPhase(today, records)
-    val nextPeriod = dataManager.predictNextPeriod(records)
-    
-    var currentMonth by remember { mutableStateOf(Calendar.getInstance()) }
-    var recordToDelete by remember { mutableStateOf<PeriodRecord?>(null) }
-    var recordToEdit by remember { mutableStateOf<PeriodRecord?>(null) }
-    var showSettingsDialog by remember { mutableStateOf(false) }
-    var showDataManagementDialog by remember { mutableStateOf(false) }
-    var showEducationDialog by remember { mutableStateOf(false) }
+
+    val records = uiState.records
+    val currentMonth = uiState.currentMonth
+    val recordToDelete = uiState.recordToDelete
+    val recordToEdit = uiState.recordToEdit
+    val showEducationDialog = uiState.showEducationDialog
+    val showSettingsDialog = uiState.showSettingsDialog
+    val showDataManagementDialog = uiState.showDataManagementDialog
+    val showPrivacyDialog = uiState.showPrivacyDialog
+
+    val phase = uiState.getCurrentPhase(dataManager)
+    val nextPeriod = dataManager.getUpcomingNextPeriod(records)
+
     var menuExpanded by remember { mutableStateOf(false) }
-    
+    var showPermissionGuide by remember { mutableStateOf(false) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Toast.makeText(context, "通知權限已開啟", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(context, "未開啟通知權限，可能無法收到經期預測提醒", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!AppBadgeManager.hasNotificationPermission(context)) {
+            showPermissionGuide = true
+        }
+    }
+
     // 用於選擇記錄方式的狀態
     var showActionChoiceDialog by remember { mutableStateOf(false) }
     var showDateTimePicker by remember { mutableStateOf(false) }
     var isPickingStart by remember { mutableStateOf(true) }
-    
+
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
 
     // 1. 選擇「現在」還是「手動」的對話框
@@ -126,8 +204,7 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
             confirmButton = {
                 Button(onClick = {
                     val now = System.currentTimeMillis()
-                    if (isPickingStart) dataManager.addRecord(now) else dataManager.updateLastRecord(now)
-                    records = dataManager.getRecords()
+                    if (isPickingStart) viewModel.addRecord(now) else viewModel.updateLastRecord(now)
                     showActionChoiceDialog = false
                 }) {
                     Text("就是現在")
@@ -146,15 +223,16 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
 
     // 2. 手動日期時間選擇器
     if (showDateTimePicker) {
+        val initialMillis = if (!isPickingStart) records.firstOrNull()?.startDate else null
         DateTimePickerHandler(
+            initialMillis = initialMillis,
             onDismiss = { showDateTimePicker = false },
             onDateTimeSelected = { selectedMillis ->
                 if (isPickingStart) {
-                    dataManager.addRecord(selectedMillis)
+                    viewModel.addRecord(selectedMillis)
                 } else {
-                    dataManager.updateLastRecord(selectedMillis)
+                    viewModel.updateLastRecord(selectedMillis)
                 }
-                records = dataManager.getRecords()
                 showDateTimePicker = false
             }
         )
@@ -190,14 +268,14 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
                             DataManagementMenuItem(
                                 onClick = {
                                     menuExpanded = false
-                                    showDataManagementDialog = true
+                                    viewModel.setShowDataManagementDialog(true)
                                 }
                             )
                             AppSettingsMenuItem(
                                 text = "設置",
                                 onClick = {
                                     menuExpanded = false
-                                    showSettingsDialog = true
+                                    viewModel.setShowSettingsDialog(true)
                                 }
                             )
                             ShareAppMenuItem(
@@ -230,7 +308,7 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
                         nextPeriod = nextPeriod,
                         phase = phase,
                         dateFormat = dateFormat,
-                        onClick = { showEducationDialog = true }
+                        onClick = { viewModel.setShowEducationDialog(true) }
                     )
                 }
 
@@ -245,7 +323,7 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
                             PeriodCalendar(
                                 currentMonth = currentMonth,
                                 records = records,
-                                onMonthChange = { currentMonth = it },
+                                onMonthChange = { viewModel.setCurrentMonth(it) },
                                 dataManager = dataManager
                             )
                             
@@ -318,12 +396,45 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
                     HistoryItem(
                         record = record,
                         dateFormat = dateFormat,
-                        onEdit = { recordToEdit = record },
-                        onDelete = { recordToDelete = record }
+                        onEdit = { viewModel.setRecordToEdit(record) },
+                        onDelete = { viewModel.setRecordToDelete(record) }
                     )
                 }
                 
-                item { Spacer(modifier = Modifier.height(32.dp)) }
+                // 5. 隱私條例保護說明 (頁面最下方，用戶點擊後查看)
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Surface(
+                        onClick = { viewModel.setShowPrivacyDialog(true) },
+                        shape = RoundedCornerShape(12.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerLow,
+                        border = BorderStroke(0.5.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "🔒 隱私安全聲明：所有記錄僅加密存於手機本地，絕不上傳。[點擊查看詳情]",
+                                fontSize = 11.5.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -333,11 +444,9 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
         EditPeriodDialog(
             record = record,
             dateFormat = dateFormat,
-            onDismiss = { recordToEdit = null },
+            onDismiss = { viewModel.setRecordToEdit(null) },
             onConfirm = { updatedStart, updatedEnd ->
-                dataManager.updateRecord(record, PeriodRecord(updatedStart, updatedEnd))
-                records = dataManager.getRecords()
-                recordToEdit = null
+                viewModel.updateRecord(record, PeriodRecord(updatedStart, updatedEnd))
             }
         )
     }
@@ -345,17 +454,15 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
     // 刪除確認對話框
     if (recordToDelete != null) {
         AlertDialog(
-            onDismissRequest = { recordToDelete = null },
+            onDismissRequest = { viewModel.setRecordToDelete(null) },
             title = { Text("確認刪除") },
             text = { Text("您確定要刪除這條月經記錄嗎？此操作無法撤銷。") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         recordToDelete?.let {
-                            dataManager.deleteRecord(it)
-                            records = dataManager.getRecords()
+                            viewModel.deleteRecord(it)
                         }
-                        recordToDelete = null
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) {
@@ -363,7 +470,7 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { recordToDelete = null }) {
+                TextButton(onClick = { viewModel.setRecordToDelete(null) }) {
                     Text("取消")
                 }
             }
@@ -372,16 +479,115 @@ fun PeriodTrackerScreen(onBack: () -> Unit) {
 
     // 月經與安全期科普對話框 (屏佔比 85%)
     if (showEducationDialog) {
-        PeriodEducationDialog(onDismiss = { showEducationDialog = false })
+        PeriodEducationDialog(onDismiss = { viewModel.setShowEducationDialog(false) })
     }
 
     if (showSettingsDialog) {
-        AppSettingsDialog(onDismiss = { showSettingsDialog = false })
+        AppSettingsDialog(onDismiss = { viewModel.setShowSettingsDialog(false) })
     }
 
     if (showDataManagementDialog) {
-        DataManagementDialog(onDismiss = { showDataManagementDialog = false })
+        DataManagementDialog(onDismiss = { viewModel.setShowDataManagementDialog(false) })
     }
+
+    if (showPrivacyDialog) {
+        PeriodPrivacyDialog(onDismiss = { viewModel.setShowPrivacyDialog(false) })
+    }
+
+    // 權限引導對話框 (提示開啟通知權限)
+    if (showPermissionGuide) {
+        AlertDialog(
+            onDismissRequest = { showPermissionGuide = false },
+            title = { Text("需要通知權限") },
+            text = {
+                Text(
+                    "為了確保您能準時收到經期預測與生理週期提醒，請開啟「通知」權限。",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showPermissionGuide = false
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        } else {
+                            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            }
+                            context.startActivity(intent)
+                        }
+                    }
+                ) {
+                    Text("去開啟", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionGuide = false }) {
+                    Text("稍後再說")
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun PeriodPrivacyDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Lock,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "隱私條例與數據保護說明",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "【數據安全與隱私承諾】",
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "1. 100% 本地加密儲存：您的所有月經記錄、週期預測及生理健康數據，均僅儲存於您個人的手機本地設備中。",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "2. 零收集、零上傳：本應用完全沒有後台伺服器，絕不上傳、收集、分析或向任何第三方透露您的任何個人健康隱私。",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "3. 完全自主掌控：您可以隨時在「數據管理」中導出備份您的資料，也可以隨時一鍵徹底刪除所有記錄。",
+                    fontSize = 13.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "我們高度尊重並嚴格保護您的個人隱私，請您安心使用。",
+                    fontSize = 12.5.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text("我已知曉")
+            }
+        }
+    )
 }
 
 @Composable
@@ -479,22 +685,23 @@ fun EditPeriodDialog(
     onDismiss: () -> Unit,
     onConfirm: (startDate: Long, endDate: Long?) -> Unit
 ) {
-    var editedStart by remember { mutableLongStateOf(record.startDate) }
-    var editedEnd by remember { mutableStateOf(record.endDate) }
+    var editedStart by remember(record) { mutableLongStateOf(record.startDate) }
+    var editedEnd by remember(record) { mutableStateOf(record.endDate) }
     var pickingForStart by remember { mutableStateOf(false) }
     var pickingForEnd by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     if (pickingForStart) {
         DateTimePickerHandler(
+            initialMillis = editedStart,
             onDismiss = { pickingForStart = false },
             onDateTimeSelected = { selectedMillis ->
                 editedStart = selectedMillis
                 pickingForStart = false
-                if (editedEnd != null && editedEnd!! < editedStart) {
-                    errorMessage = "結束時間不能早於開始時間"
+                errorMessage = if (editedEnd != null && editedEnd!! < editedStart) {
+                    "結束時間不能早於開始時間"
                 } else {
-                    errorMessage = null
+                    null
                 }
             }
         )
@@ -502,12 +709,13 @@ fun EditPeriodDialog(
 
     if (pickingForEnd) {
         DateTimePickerHandler(
+            initialMillis = editedEnd ?: editedStart,
             onDismiss = { pickingForEnd = false },
             onDateTimeSelected = { selectedMillis ->
+                editedEnd = selectedMillis
                 if (selectedMillis < editedStart) {
                     errorMessage = "結束時間不能早於開始時間"
                 } else {
-                    editedEnd = selectedMillis
                     errorMessage = null
                 }
                 pickingForEnd = false

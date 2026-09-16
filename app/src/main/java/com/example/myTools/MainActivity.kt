@@ -11,6 +11,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import androidx.core.content.edit
 import com.example.myTools.ui.theme.AppThemeScheme
 import com.example.myTools.ui.theme.DarkModeConfig
 import com.example.myTools.ui.theme.RulerTheme
@@ -27,7 +28,7 @@ class MainActivity : ComponentActivity() {
         private val _darkModeConfig = MutableStateFlow(DarkModeConfig.FOLLOW_SYSTEM)
         val darkModeConfig = _darkModeConfig.asStateFlow()
 
-        private val _isAppBlurred = MutableStateFlow(false)
+        private val _isAppBlurred = MutableStateFlow(value = false)
         val isAppBlurred = _isAppBlurred.asStateFlow()
 
         private val _externalTxtUri = MutableStateFlow<Uri?>(null)
@@ -35,18 +36,16 @@ class MainActivity : ComponentActivity() {
 
         fun updateTheme(context: Context, scheme: AppThemeScheme) {
             _themeScheme.value = scheme
-            context.getSharedPreferences("prefs", MODE_PRIVATE)
-                .edit()
-                .putString("theme_scheme", scheme.name)
-                .apply()
+            context.getSharedPreferences("prefs", MODE_PRIVATE).edit {
+                putString("theme_scheme", scheme.name)
+            }
         }
 
         fun updateDarkMode(context: Context, config: DarkModeConfig) {
             _darkModeConfig.value = config
-            context.getSharedPreferences("prefs", MODE_PRIVATE)
-                .edit()
-                .putString("dark_mode", config.name)
-                .apply()
+            context.getSharedPreferences("prefs", MODE_PRIVATE).edit {
+                putString("dark_mode", config.name)
+            }
         }
 
         fun setAppBlurred(isBlurred: Boolean) {
@@ -63,12 +62,20 @@ class MainActivity : ComponentActivity() {
 
         // 初始化主題與深色模式
         val prefs = getSharedPreferences("prefs", MODE_PRIVATE)
-        
+
         val savedTheme = prefs.getString("theme_scheme", AppThemeScheme.DYNAMIC.name)
-        _themeScheme.value = AppThemeScheme.valueOf(savedTheme ?: AppThemeScheme.DYNAMIC.name)
+        _themeScheme.value = try {
+            AppThemeScheme.valueOf(savedTheme ?: AppThemeScheme.DYNAMIC.name)
+        } catch (_: Exception) {
+            AppThemeScheme.DYNAMIC
+        }
 
         val savedDarkMode = prefs.getString("dark_mode", DarkModeConfig.FOLLOW_SYSTEM.name)
-        _darkModeConfig.value = DarkModeConfig.valueOf(savedDarkMode ?: DarkModeConfig.FOLLOW_SYSTEM.name)
+        _darkModeConfig.value = try {
+            DarkModeConfig.valueOf(savedDarkMode ?: DarkModeConfig.FOLLOW_SYSTEM.name)
+        } catch (_: Exception) {
+            DarkModeConfig.FOLLOW_SYSTEM
+        }
 
         enableEdgeToEdge()
 
@@ -80,10 +87,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             val currentTheme by themeScheme.collectAsState()
             val currentDarkMode by darkModeConfig.collectAsState()
-            
+
             RulerTheme(
                 themeScheme = currentTheme,
-                darkModeConfig = currentDarkMode
+                darkModeConfig = currentDarkMode,
             ) {
                 MainScreen(initialPage = currentPage)
             }
@@ -92,6 +99,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent)
         val targetPage = intent.getIntExtra("target_page", -1)
         if (targetPage != -1) {
             currentPage = targetPage

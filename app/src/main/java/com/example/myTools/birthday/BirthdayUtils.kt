@@ -53,3 +53,18 @@ fun getNextBirthdayCalendar(lunarMonth: Int, lunarDay: Int): Calendar {
     }
     return targetCalendar
 }
+
+/**
+ * 計算距離下一次農曆生日還有多少天 (0=今天, 1=明天, 2=後天...)
+ */
+fun getDaysUntilBirthday(lunarMonth: Int, lunarDay: Int): Int {
+    val today = Calendar.getInstance().apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    val targetCal = getNextBirthdayCalendar(lunarMonth, lunarDay)
+    val diffMillis = targetCal.timeInMillis - today.timeInMillis
+    return (diffMillis / (1000 * 60 * 60 * 24)).toInt()
+}

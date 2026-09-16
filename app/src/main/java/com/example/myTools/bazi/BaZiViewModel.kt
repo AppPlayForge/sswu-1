@@ -1,7 +1,7 @@
 package com.example.myTools.bazi
 
-import android.content.Context
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -52,11 +52,16 @@ data class BaZiUiState(
                 selectedRecord != null || managingTagsRecord != null
 }
 
-class BaZiViewModel : ViewModel() {
+class BaZiViewModel(application: Application) : AndroidViewModel(application) {
     private val _uiState = MutableStateFlow(BaZiUiState())
     val uiState: StateFlow<BaZiUiState> = _uiState.asStateFlow()
 
-    fun loadData(context: Context) {
+    init {
+        loadData()
+    }
+
+    fun loadData() {
+        val context = getApplication<Application>()
         val activeList = BaZiManager.loadList(context)
         val trashList = BaZiManager.loadTrashList(context)
         _uiState.update {
@@ -99,9 +104,10 @@ class BaZiViewModel : ViewModel() {
         _uiState.update { it.copy(managingTagsRecord = record) }
     }
 
-    fun saveRecord(context: Context, record: BaZiRecord) {
+    fun saveRecord(record: BaZiRecord) {
+        val context = getApplication<Application>()
         BaZiManager.addOrUpdateRecord(context, record)
-        loadData(context)
+        loadData()
         _uiState.update {
             it.copy(
                 activeDialog = if (it.activeDialog == BaZiDialogType.ADD) null else it.activeDialog,
@@ -110,37 +116,43 @@ class BaZiViewModel : ViewModel() {
         }
     }
 
-    fun togglePin(context: Context, recordId: Long): Boolean {
+    fun togglePin(recordId: Long): Boolean {
+        val context = getApplication<Application>()
         val updated = BaZiManager.togglePinRecord(context, recordId)
-        loadData(context)
+        loadData()
         return updated.find { it.id == recordId }?.isPinned == true
     }
 
-    fun moveToTrash(context: Context, recordId: Long) {
+    fun moveToTrash(recordId: Long) {
+        val context = getApplication<Application>()
         BaZiManager.moveToTrash(context, recordId)
-        loadData(context)
+        loadData()
         _uiState.update { it.copy(recordToDelete = null) }
     }
 
-    fun restoreFromTrash(context: Context, recordId: Long) {
+    fun restoreFromTrash(recordId: Long) {
+        val context = getApplication<Application>()
         BaZiManager.restoreFromTrash(context, recordId)
-        loadData(context)
+        loadData()
     }
 
-    fun permanentlyDeleteFromTrash(context: Context, recordId: Long) {
+    fun permanentlyDeleteFromTrash(recordId: Long) {
+        val context = getApplication<Application>()
         BaZiManager.permanentlyDeleteFromTrash(context, recordId)
-        loadData(context)
+        loadData()
     }
 
-    fun emptyTrash(context: Context) {
+    fun emptyTrash() {
+        val context = getApplication<Application>()
         BaZiManager.emptyTrash(context)
-        loadData(context)
+        loadData()
     }
 
-    fun saveTags(context: Context, record: BaZiRecord, tags: List<String>) {
+    fun saveTags(record: BaZiRecord, tags: List<String>) {
+        val context = getApplication<Application>()
         val updatedRecord = record.copy(tags = tags)
         BaZiManager.addOrUpdateRecord(context, updatedRecord)
-        loadData(context)
+        loadData()
         _uiState.update { it.copy(managingTagsRecord = null) }
     }
 }

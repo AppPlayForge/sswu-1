@@ -9,7 +9,6 @@ val localProperties = Properties().apply {
 
 plugins {
     alias(libs.plugins.android.application)
-    // alias(libs.plugins.kotlin.android) // AGP 9.0+ 已內建支持，無需此插件
     alias(libs.plugins.kotlin.compose)
 }
 
@@ -22,7 +21,7 @@ android {
         minSdk = 31
         targetSdk = 36
         versionCode = 1
-        versionName = "2.0.0"
+        versionName = "2.0.1"
 
         val devPassword = localProperties.getProperty("DEV_PASSWORD") ?: ""
         val devRsaPrivateExponent = localProperties.getProperty("DEV_RSA_PRIVATE_EXPONENT") ?: ""
@@ -30,11 +29,6 @@ android {
         buildConfigField("String", "DEV_RSA_PRIVATE_EXPONENT", "\"$devRsaPrivateExponent\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        externalNativeBuild {
-            cmake {
-                cppFlags += ""
-            }
-        }
     }
 
     buildTypes {
@@ -48,8 +42,8 @@ android {
     }
     
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
     buildFeatures {

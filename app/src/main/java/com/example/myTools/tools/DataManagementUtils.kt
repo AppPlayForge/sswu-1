@@ -1,5 +1,6 @@
 package com.example.myTools.tools
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.provider.Settings
 import androidx.core.content.edit
@@ -12,12 +13,14 @@ import com.example.myTools.note.NoteRecord
 import com.example.myTools.period.PeriodDataManager
 import com.example.myTools.period.PeriodRecord
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 object DataManagementUtils {
     private const val PREF_NAME = "activation_prefs"
     private const val KEY_ACTIVATION_CODE = "activation_code"
 
+    @SuppressLint("HardwareIds")
     fun getDeviceId(context: Context): String {
         return Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID) ?: "UNKNOWN"
     }
@@ -50,7 +53,7 @@ object DataManagementUtils {
         val birthdayList = BirthdayManager.loadList(context)
         val periodList = PeriodDataManager(context).getRecords()
         val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        
+
         val sb = StringBuilder()
         sb.append('\uFEFF') // UTF-8 BOM
 
@@ -76,7 +79,7 @@ object DataManagementUtils {
         periodList.forEach { r ->
             val start = sdf.format(Date(r.startDate))
             val end = r.endDate?.let { sdf.format(Date(it)) } ?: ""
-            val duration = if (r.endDate != null) ((r.endDate - r.startDate) / (24 * 60 * 60 * 1000) + 1).toString() else ""
+            val duration = if (r.endDate != null) (((r.endDate - r.startDate) / PeriodDataManager.DAY_IN_MILLIS) + 1).toString() else ""
             sb.append("$start,$end,$duration\n")
         }
         sb.append("\n")
@@ -97,19 +100,19 @@ object DataManagementUtils {
      */
     fun importAllFromCsv(context: Context, csv: String): Boolean {
         return try {
-            val lines = csv.replace("\uFEFF", "").lines()
+            val lines = getLogicalCsvLines(csv)
             val baziList = mutableListOf<BaZiRecord>()
             val birthdayList = mutableListOf<BirthdayRecord>()
             val periodList = mutableListOf<PeriodRecord>()
             val noteList = mutableListOf<NoteRecord>()
-            
+
             var currentSection = ""
             val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
             lines.forEach { line ->
                 val trimmed = line.trim()
                 if (trimmed.isEmpty()) return@forEach
-                
+
                 if (trimmed.startsWith("# SECTION:")) {
                     currentSection = trimmed.substringAfter("# SECTION:")
                     return@forEach
@@ -122,54 +125,62 @@ object DataManagementUtils {
                 when (currentSection) {
                     "BAZI" -> {
                         if (parts.size >= 12) {
-                            baziList.add(BaZiRecord(
-                                id = parts[0].toLong(),
-                                surname = "", // CSV 導出時合併了姓名，導入時放在 givenName
-                                givenName = parts[1],
-                                gender = parts[2],
-                                year = parts[3].toInt(),
-                                month = parts[4].toInt(),
-                                day = parts[5].toInt(),
-                                hour = parts[6].toInt(),
-                                minute = parts[7].toInt(),
-                                province = parts[8],
-                                city = parts[9],
-                                isLunar = parts[10].toBoolean(),
-                                isLeapMonth = parts[11].toBoolean()
-                            ))
+                            baziList.add(
+                                BaZiRecord(
+                                    id = parts[0].toLongOrNull() ?: System.currentTimeMillis(),
+                                    surname = "", // CSV 導出時合併了姓名，導入時放在 givenName
+                                    givenName = parts[1],
+                                    gender = parts[2],
+                                    year = parts[3].toIntOrNull() ?: 1990,
+                                    month = parts[4].toIntOrNull() ?: 1,
+                                    day = parts[5].toIntOrNull() ?: 1,
+                                    hour = parts[6].toIntOrNull() ?: 12,
+                                    minute = parts[7].toIntOrNull() ?: 0,
+                                    province = parts[8],
+                                    city = parts[9],
+                                    isLunar = parts[10].toBoolean(),
+                                    isLeapMonth = parts[11].toBoolean(),
+                                )
+                            )
                         }
                     }
                     "BIRTHDAY" -> {
                         if (parts.size >= 7) {
-                            birthdayList.add(BirthdayRecord(
-                                id = parts[0].toLong(),
-                                name = parts[1],
-                                lunarMonth = parts[2].toInt(),
-                                lunarDay = parts[3].toInt(),
-                                remindHour = parts[4].toInt(),
-                                remindMinute = parts[5].toInt(),
-                                remindList = parts[6].split(";").filter { it.isNotEmpty() }.map { it.toInt() }
-                            ))
+                            birthdayList.add(
+                                BirthdayRecord(
+                                    id = parts[0].toLongOrNull() ?: System.currentTimeMillis(),
+                                    name = parts[1],
+                                    lunarMonth = parts[2].toIntOrNull() ?: 1,
+                                    lunarDay = parts[3].toIntOrNull() ?: 1,
+                                    remindHour = parts[4].toIntOrNull() ?: 9,
+                                    remindMinute = parts[5].toIntOrNull() ?: 0,
+                                    remindList = parts[6].split(";").mapNotNull { s -> s.trim().toIntOrNull() },
+                                )
+                            )
                         }
                     }
                     "PERIOD" -> {
                         if (parts.size >= 2) {
-                            val start = sdf.parse(parts[0])?.time ?: return@forEach
-                            val end = if (parts[1].isNotEmpty()) sdf.parse(parts[1])?.time else null
+                            val start = try { sdf.parse(parts[0])?.time } catch (_: Exception) { null } ?: return@forEach
+                            val end = if (parts[1].isNotEmpty()) {
+                                try { sdf.parse(parts[1])?.time } catch (_: Exception) { null }
+                            } else null
                             periodList.add(PeriodRecord(start, end))
                         }
                     }
                     "NOTE" -> {
                         if (parts.size >= 5) {
-                            noteList.add(NoteRecord(
-                                id = parts[0].toLongOrNull() ?: System.currentTimeMillis(),
-                                title = parts[1],
-                                content = parts[2],
-                                updatedAt = parts[3].toLongOrNull() ?: System.currentTimeMillis(),
-                                createdAt = parts.getOrNull(4)?.toLongOrNull() ?: System.currentTimeMillis(),
-                                isPinned = parts.getOrNull(5)?.toBoolean() ?: false,
-                                colorHex = parts.getOrNull(6)?.ifBlank { null }
-                            ))
+                            noteList.add(
+                                NoteRecord(
+                                    id = parts[0].toLongOrNull() ?: System.currentTimeMillis(),
+                                    title = parts[1],
+                                    content = parts[2],
+                                    updatedAt = parts[3].toLongOrNull() ?: System.currentTimeMillis(),
+                                    createdAt = parts.getOrNull(4)?.toLongOrNull() ?: System.currentTimeMillis(),
+                                    isPinned = parts.getOrNull(5)?.toBoolean() ?: false,
+                                    colorHex = parts.getOrNull(6)?.ifBlank { null },
+                                )
+                            )
                         }
                     }
                 }
@@ -191,6 +202,36 @@ object DataManagementUtils {
         }
     }
 
+    /**
+     * 處理包含換行符號的多行 CSV 數據列
+     */
+    private fun getLogicalCsvLines(csv: String): List<String> {
+        val rawLines = csv.replace("\uFEFF", "").lines()
+        val result = mutableListOf<String>()
+        val currentLine = StringBuilder()
+        var inQuotes = false
+
+        for (line in rawLines) {
+            val quoteCount = line.count { it == '"' }
+            if (currentLine.isNotEmpty()) {
+                currentLine.append("\n").append(line)
+            } else {
+                currentLine.append(line)
+            }
+            if (quoteCount % 2 != 0) {
+                inQuotes = !inQuotes
+            }
+            if (!inQuotes) {
+                result.add(currentLine.toString())
+                currentLine.clear()
+            }
+        }
+        if (currentLine.isNotEmpty()) {
+            result.add(currentLine.toString())
+        }
+        return result
+    }
+
     private fun escapeCsv(value: String): String {
         if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
             return "\"${value.replace("\"", "\"\"")}\""
@@ -201,7 +242,7 @@ object DataManagementUtils {
     private fun parseCsvLine(line: String): List<String> {
         val result = mutableListOf<String>()
         var inQuotes = false
-        var current = StringBuilder()
+        val current = StringBuilder()
         var i = 0
         while (i < line.length) {
             val c = line[i]
@@ -214,7 +255,7 @@ object DataManagementUtils {
                 }
             } else if (c == ',' && !inQuotes) {
                 result.add(current.toString())
-                current = StringBuilder()
+                current.clear()
             } else {
                 current.append(c)
             }

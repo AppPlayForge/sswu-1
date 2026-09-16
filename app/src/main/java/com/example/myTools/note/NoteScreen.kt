@@ -1,10 +1,8 @@
 package com.example.myTools.note
 
-import android.content.ClipData
-import android.content.ClipboardManager
-import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -14,15 +12,19 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -32,29 +34,45 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.PushPin
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.FolderOpen
+import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.myTools.MainActivity
 import com.example.myTools.tools.DataManagementDialog
 import com.example.myTools.ui.BlurryContainer
@@ -70,30 +88,34 @@ import com.example.myTools.ui.TrashedItem
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun NoteScreen() {
+fun NoteScreen(
+    onBack: (() -> Unit)? = null,
+    viewModel: NoteViewModel = viewModel()
+) {
     val context = LocalContext.current
-    var notes by remember { mutableStateOf(NoteManager.loadList(context)) }
-    var isGridView by rememberSaveable { mutableStateOf(NoteManager.isGridView(context)) }
-    var isSearchActive by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    
-    var editingNote by remember { mutableStateOf<NoteRecord?>(null) }
-    var deletingNote by remember { mutableStateOf<NoteRecord?>(null) }
-    var managingTagsNote by remember { mutableStateOf<NoteRecord?>(null) }
+    val uiState by viewModel.uiState.collectAsState()
+
     var menuExpanded by remember { mutableStateOf(false) }
 
-    var selectedTagFilter by remember { mutableStateOf<String?>(null) }
-    var tagSortMode by remember { mutableStateOf(false) }
+    val notes = uiState.notes
+    val isGridView = uiState.isGridView
+    val isSearchActive = uiState.isSearchActive
+    val searchQuery = uiState.searchQuery
+    val editingNote = uiState.editingNote
+    val deletingNote = uiState.deletingNote
+    val managingTagsNote = uiState.managingTagsNote
+    val selectedTagFilter = uiState.selectedTagFilter
+    val tagSortMode = uiState.tagSortMode
+    val openedTxtFile = uiState.openedTxtFile
+    val trashNotes = uiState.trashNotes
+    val showTrashDialog = uiState.activeDialog == NoteDialogType.TRASH
+    val showDataManagementDialog = uiState.activeDialog == NoteDialogType.DATA_MANAGEMENT
 
-    var showDataManagementDialog by remember { mutableStateOf(false) }
-    var showTrashDialog by remember { mutableStateOf(false) }
-    var trashNotes by remember { mutableStateOf(NoteManager.loadTrashList(context)) }
-    var openedTxtFile by remember { mutableStateOf<OpenedTxtFile?>(null) }
-
-    // 彙整目前所有筆記中的不重複標籤
-    val allUniqueTags = remember(notes) {
-        notes.flatMap { it.getEffectiveTags() }.distinct().sorted()
-    }
+    val allUniqueTags = uiState.allUniqueTags
+    val filteredNotes = uiState.filteredNotes
+    val pinnedNotes = uiState.pinnedNotes
+    val otherNotes = uiState.otherNotes
+    val isAnyDialogOpen = uiState.isAnyDialogOpen
 
     // 監聽外部文件管理器發送的 .txt 開啟請求 (ACTION_VIEW / ACTION_EDIT)
     val externalUri by MainActivity.externalTxtUri.collectAsState()
@@ -103,7 +125,7 @@ fun NoteScreen() {
         if (uri != null) {
             when (val result = TextFileLoader.readTextFromUri(context, uri)) {
                 is TextFileLoader.Result.Success -> {
-                    openedTxtFile = OpenedTxtFile(uri, result.fileName, result.content)
+                    viewModel.setOpenedTxtFile(OpenedTxtFile(uri, result.fileName, result.content))
                 }
                 is TextFileLoader.Result.Error -> {
                     Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
@@ -120,7 +142,7 @@ fun NoteScreen() {
         if (uri != null) {
             when (val result = TextFileLoader.readTextFromUri(context, uri)) {
                 is TextFileLoader.Result.Success -> {
-                    openedTxtFile = OpenedTxtFile(uri, result.fileName, result.content)
+                    viewModel.setOpenedTxtFile(OpenedTxtFile(uri, result.fileName, result.content))
                 }
                 is TextFileLoader.Result.Error -> {
                     Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
@@ -128,37 +150,6 @@ fun NoteScreen() {
             }
         }
     }
-
-    val filteredNotes = remember(searchQuery, selectedTagFilter, tagSortMode, notes) {
-        var result = if (searchQuery.isBlank()) {
-            notes
-        } else {
-            notes.filter { 
-                it.title.contains(searchQuery, ignoreCase = true) || 
-                it.content.contains(searchQuery, ignoreCase = true) ||
-                it.getEffectiveTags().any { tag -> tag.contains(searchQuery, ignoreCase = true) }
-            }
-        }
-
-        if (selectedTagFilter != null) {
-            result = result.filter { it.getEffectiveTags().contains(selectedTagFilter) }
-        }
-
-        if (tagSortMode) {
-            result = result.sortedWith(
-                compareByDescending<NoteRecord> { it.isPinned }
-                    .thenBy { it.getEffectiveTags().firstOrNull() ?: "zzz" }
-                    .thenByDescending { it.updatedAt }
-            )
-        }
-
-        result
-    }
-
-    val pinnedNotes = remember(filteredNotes) { filteredNotes.filter { it.isPinned } }
-    val otherNotes = remember(filteredNotes) { filteredNotes.filter { !it.isPinned } }
-
-    val isAnyDialogOpen = editingNote != null || deletingNote != null || showDataManagementDialog || openedTxtFile != null || managingTagsNote != null || showTrashDialog
 
     val gridState = rememberLazyGridState()
     val listState = rememberLazyListState()
@@ -205,6 +196,8 @@ fun NoteScreen() {
         MainActivity.setAppBlurred(isAnyDialogOpen)
     }
 
+    val backDispatcher = LocalOnBackPressedDispatcherOwner.current?.onBackPressedDispatcher
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
@@ -213,15 +206,28 @@ fun NoteScreen() {
                     SearchableTopBar(
                         title = if (selectedTagFilter != null) "記事本 (#$selectedTagFilter)" else "記事本",
                         isSearchActive = isSearchActive,
-                        onSearchActiveChange = { isSearchActive = it },
+                        onSearchActiveChange = { viewModel.onSearchActiveChange(it) },
                         searchQuery = searchQuery,
-                        onQueryChange = { searchQuery = it },
+                        onQueryChange = { viewModel.onSearchQueryChange(it) },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                if (onBack != null) {
+                                    onBack()
+                                } else {
+                                    backDispatcher?.onBackPressed()
+                                }
+                            }) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "返回",
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        },
                         actions = {
                             // 切換單欄/雙欄檢視
                             IconButton(onClick = {
-                                val newGridView = !isGridView
-                                isGridView = newGridView
-                                NoteManager.setGridView(context, newGridView)
+                                viewModel.setGridView(!isGridView)
                             }) {
                                 Icon(
                                     imageVector = if (isGridView) Icons.AutoMirrored.Filled.ViewList else Icons.Default.GridView,
@@ -246,7 +252,7 @@ fun NoteScreen() {
                                         text = { Text(if (tagSortMode) "預設按時間排序" else "按標籤排序") },
                                         onClick = {
                                             menuExpanded = false
-                                            tagSortMode = !tagSortMode
+                                            viewModel.toggleTagSortMode()
                                         },
                                         leadingIcon = { Icon(Icons.AutoMirrored.Filled.Label, contentDescription = null) }
                                     )
@@ -255,7 +261,7 @@ fun NoteScreen() {
                                             text = { Text("清除標籤篩選") },
                                             onClick = {
                                                 menuExpanded = false
-                                                selectedTagFilter = null
+                                                viewModel.onTagFilterSelect(null)
                                             },
                                             leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = null) }
                                         )
@@ -265,7 +271,7 @@ fun NoteScreen() {
                                         text = "導出/導入筆記本",
                                         onClick = {
                                             menuExpanded = false
-                                            showDataManagementDialog = true
+                                            viewModel.showDialog(NoteDialogType.DATA_MANAGEMENT)
                                         }
                                     )
 
@@ -291,8 +297,7 @@ fun NoteScreen() {
                                         count = trashNotes.size,
                                         onClick = {
                                             menuExpanded = false
-                                            trashNotes = NoteManager.loadTrashList(context)
-                                            showTrashDialog = true
+                                            viewModel.showDialog(NoteDialogType.TRASH)
                                         }
                                     )
                                 }
@@ -312,7 +317,7 @@ fun NoteScreen() {
                         ) {
                             FilterChip(
                                 selected = selectedTagFilter == null,
-                                onClick = { selectedTagFilter = null },
+                                onClick = { viewModel.onTagFilterSelect(null) },
                                 label = { Text("全部 (${notes.size})") },
                                 leadingIcon = if (selectedTagFilter == null) {
                                     { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
@@ -326,7 +331,7 @@ fun NoteScreen() {
                                     tagName = "$tag ($count)",
                                     isSelected = isSelected,
                                     onClick = {
-                                        selectedTagFilter = if (isSelected) null else tag
+                                        viewModel.onTagFilterSelect(if (isSelected) null else tag)
                                     }
                                 )
                             }
@@ -344,7 +349,7 @@ fun NoteScreen() {
                 BlurryContainer(isBlur = isAnyDialogOpen) {
                     ExtendedFloatingActionButton(
                         onClick = {
-                            editingNote = NoteRecord()
+                            viewModel.setEditingNote(NoteRecord())
                         },
                         icon = {
                             Icon(
@@ -398,7 +403,7 @@ fun NoteScreen() {
                         )
                         if (selectedTagFilter != null) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(onClick = { selectedTagFilter = null }) {
+                            TextButton(onClick = { viewModel.onTagFilterSelect(null) }) {
                                 Text("清除標籤篩選 (#$selectedTagFilter)")
                             }
                         }
@@ -421,13 +426,10 @@ fun NoteScreen() {
                             items(pinnedNotes, key = { it.id }) { note ->
                                 NoteCard(
                                     note = note,
-                                    onClick = { editingNote = note },
-                                    onTogglePin = {
-                                        NoteManager.togglePinRecord(context, note.id)
-                                        notes = NoteManager.loadList(context)
-                                    },
-                                    onManageTags = { managingTagsNote = note },
-                                    onSelectTagFilter = { selectedTagFilter = it },
+                                    onClick = { viewModel.setEditingNote(note) },
+                                    onTogglePin = { viewModel.togglePin(note.id) },
+                                    onManageTags = { viewModel.setManagingTagsNote(note) },
+                                    onSelectTagFilter = { viewModel.onTagFilterSelect(it) },
                                     onSaveAsTxt = {
                                         val fn = NoteManager.saveNoteToDownloads(context, note)
                                         if (fn != null) {
@@ -436,7 +438,7 @@ fun NoteScreen() {
                                             Toast.makeText(context, "儲存失敗", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                    onDelete = { deletingNote = note }
+                                    onDelete = { viewModel.setDeletingNote(note) }
                                 )
                             }
                         }
@@ -450,13 +452,10 @@ fun NoteScreen() {
                             items(otherNotes, key = { it.id }) { note ->
                                 NoteCard(
                                     note = note,
-                                    onClick = { editingNote = note },
-                                    onTogglePin = {
-                                        NoteManager.togglePinRecord(context, note.id)
-                                        notes = NoteManager.loadList(context)
-                                    },
-                                    onManageTags = { managingTagsNote = note },
-                                    onSelectTagFilter = { selectedTagFilter = it },
+                                    onClick = { viewModel.setEditingNote(note) },
+                                    onTogglePin = { viewModel.togglePin(note.id) },
+                                    onManageTags = { viewModel.setManagingTagsNote(note) },
+                                    onSelectTagFilter = { viewModel.onTagFilterSelect(it) },
                                     onSaveAsTxt = {
                                         val fn = NoteManager.saveNoteToDownloads(context, note)
                                         if (fn != null) {
@@ -465,7 +464,7 @@ fun NoteScreen() {
                                             Toast.makeText(context, "儲存失敗", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                    onDelete = { deletingNote = note }
+                                    onDelete = { viewModel.setDeletingNote(note) }
                                 )
                             }
                         }
@@ -482,13 +481,10 @@ fun NoteScreen() {
                             items(pinnedNotes, key = { it.id }) { note ->
                                 NoteCard(
                                     note = note,
-                                    onClick = { editingNote = note },
-                                    onTogglePin = {
-                                        NoteManager.togglePinRecord(context, note.id)
-                                        notes = NoteManager.loadList(context)
-                                    },
-                                    onManageTags = { managingTagsNote = note },
-                                    onSelectTagFilter = { selectedTagFilter = it },
+                                    onClick = { viewModel.setEditingNote(note) },
+                                    onTogglePin = { viewModel.togglePin(note.id) },
+                                    onManageTags = { viewModel.setManagingTagsNote(note) },
+                                    onSelectTagFilter = { viewModel.onTagFilterSelect(it) },
                                     onSaveAsTxt = {
                                         val fn = NoteManager.saveNoteToDownloads(context, note)
                                         if (fn != null) {
@@ -497,7 +493,7 @@ fun NoteScreen() {
                                             Toast.makeText(context, "儲存失敗", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                    onDelete = { deletingNote = note }
+                                    onDelete = { viewModel.setDeletingNote(note) }
                                 )
                             }
                         }
@@ -509,13 +505,10 @@ fun NoteScreen() {
                             items(otherNotes, key = { it.id }) { note ->
                                 NoteCard(
                                     note = note,
-                                    onClick = { editingNote = note },
-                                    onTogglePin = {
-                                        NoteManager.togglePinRecord(context, note.id)
-                                        notes = NoteManager.loadList(context)
-                                    },
-                                    onManageTags = { managingTagsNote = note },
-                                    onSelectTagFilter = { selectedTagFilter = it },
+                                    onClick = { viewModel.setEditingNote(note) },
+                                    onTogglePin = { viewModel.togglePin(note.id) },
+                                    onManageTags = { viewModel.setManagingTagsNote(note) },
+                                    onSelectTagFilter = { viewModel.onTagFilterSelect(it) },
                                     onSaveAsTxt = {
                                         val fn = NoteManager.saveNoteToDownloads(context, note)
                                         if (fn != null) {
@@ -524,7 +517,7 @@ fun NoteScreen() {
                                             Toast.makeText(context, "儲存失敗", Toast.LENGTH_SHORT).show()
                                         }
                                     },
-                                    onDelete = { deletingNote = note }
+                                    onDelete = { viewModel.setDeletingNote(note) }
                                 )
                             }
                         }
@@ -538,16 +531,14 @@ fun NoteScreen() {
     editingNote?.let { note ->
         NoteEditDialog(
             note = note,
-            onDismiss = { editingNote = null },
+            onDismiss = { viewModel.setEditingNote(null) },
             onSave = { updatedNote ->
-                NoteManager.addOrUpdateRecord(context, updatedNote)
-                notes = NoteManager.loadList(context)
-                editingNote = null
+                viewModel.saveNote(updatedNote)
                 Toast.makeText(context, "已保存", Toast.LENGTH_SHORT).show()
             },
             onDelete = { noteToDelete ->
-                editingNote = null
-                deletingNote = noteToDelete
+                viewModel.setEditingNote(null)
+                viewModel.setDeletingNote(noteToDelete)
             },
             onSaveAsTxt = { noteToSave ->
                 val fn = NoteManager.saveNoteToDownloads(context, noteToSave)
@@ -566,12 +557,9 @@ fun NoteScreen() {
             title = "管理「${note.title.ifBlank { "未命名筆記" }}」的標籤",
             currentTags = note.getEffectiveTags(),
             allAppTags = allUniqueTags,
-            onDismiss = { managingTagsNote = null },
+            onDismiss = { viewModel.setManagingTagsNote(null) },
             onSaveTags = { updatedTags ->
-                val updatedNote = note.copy(tags = updatedTags)
-                NoteManager.addOrUpdateRecord(context, updatedNote)
-                notes = NoteManager.loadList(context)
-                managingTagsNote = null
+                viewModel.saveTags(note, updatedTags)
                 Toast.makeText(context, "已更新標籤", Toast.LENGTH_SHORT).show()
             }
         )
@@ -582,12 +570,9 @@ fun NoteScreen() {
         DeleteConfirmDialog(
             title = "移至回收站",
             message = "確定要將「${note.title.ifBlank { "未命名筆記" }}」移至回收站嗎？稍後可隨時從回收站還原。",
-            onDismiss = { deletingNote = null },
+            onDismiss = { viewModel.setDeletingNote(null) },
             onConfirm = {
-                NoteManager.moveToTrash(context, note.id)
-                notes = NoteManager.loadList(context)
-                trashNotes = NoteManager.loadTrashList(context)
-                deletingNote = null
+                viewModel.moveToTrash(note.id)
                 Toast.makeText(context, "已移至回收站", Toast.LENGTH_SHORT).show()
             }
         )
@@ -610,21 +595,17 @@ fun NoteScreen() {
         TrashDialog(
             dialogTitle = "記事本回收站",
             trashedItems = trashedItems,
-            onDismiss = { showTrashDialog = false },
+            onDismiss = { viewModel.showDialog(null) },
             onRestore = { trashedItem ->
-                NoteManager.restoreFromTrash(context, trashedItem.id)
-                notes = NoteManager.loadList(context)
-                trashNotes = NoteManager.loadTrashList(context)
+                viewModel.restoreFromTrash(trashedItem.id)
                 Toast.makeText(context, "已還原「${trashedItem.title}」", Toast.LENGTH_SHORT).show()
             },
             onPermanentlyDelete = { trashedItem ->
-                NoteManager.permanentlyDeleteFromTrash(context, trashedItem.id)
-                trashNotes = NoteManager.loadTrashList(context)
+                viewModel.permanentlyDeleteFromTrash(trashedItem.id)
                 Toast.makeText(context, "已徹底刪除「${trashedItem.title}」", Toast.LENGTH_SHORT).show()
             },
             onEmptyTrash = {
-                NoteManager.emptyTrash(context)
-                trashNotes = emptyList()
+                viewModel.emptyTrash()
                 Toast.makeText(context, "已清空回收站", Toast.LENGTH_SHORT).show()
             }
         )
@@ -633,14 +614,12 @@ fun NoteScreen() {
     // 手機 TXT 內容查看與編輯器
     openedTxtFile?.let { file ->
         TxtEditorDialog(
-            uri = file.uri,
             fileName = file.fileName,
             initialContent = file.content,
-            onDismiss = { openedTxtFile = null },
+            onDismiss = { viewModel.setOpenedTxtFile(null) },
             onImportAsNote = { importedText ->
-                val count = NoteManager.importNotesFromTxt(context, importedText, file.fileName.removeSuffix(".txt"))
-                notes = NoteManager.loadList(context)
-                openedTxtFile = null
+                val count = viewModel.importNotesFromTxt(importedText, file.fileName.removeSuffix(".txt"))
+                viewModel.setOpenedTxtFile(null)
                 Toast.makeText(context, "成功匯入 $count 筆筆記到記事本！", Toast.LENGTH_SHORT).show()
             }
         )
@@ -649,8 +628,8 @@ fun NoteScreen() {
     // 數據管理與備份對話框 (包含全量與單獨筆記本導出/導入)
     if (showDataManagementDialog) {
         DataManagementDialog(onDismiss = {
-            showDataManagementDialog = false
-            notes = NoteManager.loadList(context)
+            viewModel.showDialog(null)
+            viewModel.loadData()
         })
     }
 }

@@ -1,7 +1,5 @@
 package com.example.myTools.carspeed
 
-import android.Manifest
-import android.content.pm.PackageManager
 import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -25,12 +23,10 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -40,13 +36,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.myTools.MainActivity
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 
 
-// 定義螢幕恆亮的三種狀態
+// 定義螢幕恆亮的狀態
 enum class WakeLockMode {
     OFF, TEN_MINUTES, ALWAYS
 }
@@ -115,7 +111,7 @@ fun SpeedometerScreen(
     ) {
 
         Spacer(modifier = Modifier.padding(16.dp))
-        // 頂部控制欄：包含返回按鈕與螢幕恆亮按鈕
+        // 頂部 控制欄：包含返回按鈕與螢幕恆亮按鈕
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

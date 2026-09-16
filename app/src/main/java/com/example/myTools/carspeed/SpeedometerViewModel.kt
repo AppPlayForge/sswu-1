@@ -4,39 +4,35 @@ import android.app.Application
 import android.content.Intent
 import androidx.lifecycle.AndroidViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-//這個 ViewModel 將負責處理獲取速度和衛星資料的邏輯
+// 這個 ViewModel 負責處理獲取速度、衛星資料以及感測器邏輯
 
 class SpeedometerViewModel(application: Application) : AndroidViewModel(application) {
 
-    // 直接從單例物件 LocationData 中引用數據流 (StateFlow)。
-    // UI 會觀察這些 Flow 的變化來自動更新。
-    val speed = LocationData.speed
-    val gpsSatellites = LocationData.gpsSatellites  //GPS衛星
-    val beidouSatellites = LocationData.beidouSatellites //北斗衛星
-    val isRecording = LocationData.isRecording  //正在錄製
-    val tripDuration = LocationData.tripDuration  //行程時長
-    val maxSpeed = LocationData.maxSpeed
-    val averageSpeed = LocationData.averageSpeed  //平均速度
-    val tripDistance = LocationData.tripDistance  //行程距離
+    // 將單例物件 LocationData 中的數據流轉換為只讀 StateFlow 暴露給 UI，確保單向資料流與封裝性
+    val speed: StateFlow<Float> = LocationData.speed.asStateFlow()
+    val gpsSatellites: StateFlow<Int> = LocationData.gpsSatellites.asStateFlow() // GPS 衛星數
+    val beidouSatellites: StateFlow<Int> = LocationData.beidouSatellites.asStateFlow() // 北斗衛星數
+    val isRecording: StateFlow<Boolean> = LocationData.isRecording.asStateFlow() // 正在錄製
+    val tripDuration: StateFlow<Long> = LocationData.tripDuration.asStateFlow() // 行程時長
+    val maxSpeed: StateFlow<Float> = LocationData.maxSpeed.asStateFlow()
+    val averageSpeed: StateFlow<Float> = LocationData.averageSpeed.asStateFlow() // 平均速度
+    val tripDistance: StateFlow<Float> = LocationData.tripDistance.asStateFlow() // 行程距離
 
-
-    //讓 ViewModel 來負責管理 SensorDataManager(感測器數據管理器) 的生命週期
+    // 管理 SensorDataManager (感測器數據管理器) 的生命週期
     private val sensorDataManager = SensorDataManager(application)
 
-    //羅盤度數
+    // 羅盤度數
     val compassDegrees = sensorDataManager.compassDegrees
 
     // 初始化 AppPreferences
     private val appPreferences = AppPreferences(application)
 
-    // ---管理螢幕恆亮模式的狀態 ---
-    // 1. 建立一個私有的、可變的 StateFlow，並從 SharedPreferences 初始化它的值
+    // 管理螢幕恆亮模式的狀態
     private val _wakeLockMode = MutableStateFlow(appPreferences.getWakeLockMode())
-    // 2. 暴露一個公開的、只讀的 StateFlow 給 UI
-    val wakeLockMode = _wakeLockMode.asStateFlow()
-    // ---管理螢幕恆亮模式的狀態 ---
+    val wakeLockMode: StateFlow<WakeLockMode> = _wakeLockMode.asStateFlow()
 
     init {
         // ViewModel 建立時，開始監聽感應器
@@ -46,27 +42,28 @@ class SpeedometerViewModel(application: Application) : AndroidViewModel(applicat
     override fun onCleared() {
         // ViewModel 被銷毀時，停止監聽，防止記憶體洩漏
         sensorDataManager.stop()
-        super.onCleared()
     }
 
     /**
      * 切換騎行記錄的狀態。
-     * 這個函數會根據目前是否正在記錄，來發送不同 action 的 Intent 給 LocationService。
+     * 根據目前是否正在記錄，發送不同 action 的 Intent 給 LocationService。
      */
     fun toggleRecording() {
-        val intent = Intent(getApplication(), LocationService::class.java)
+        val app = getApplication<Application>()
+        val intent = Intent(app, LocationService::class.java).apply {
+            action = if (isRecording.value) "STOP" else "START"
+        }
 
         if (isRecording.value) {
-            intent.action = "STOP"
-            getApplication<Application>().startService(intent)
+            app.startService(intent)
         } else {
-            intent.action = "START"
-            // 直接呼叫 startForegroundService，因為 minSdk 保證了版本足夠新
-            getApplication<Application>().startForegroundService(intent)
+            app.startForegroundService(intent)
         }
     }
 
-    // 一個函數，讓 UI 可以通知我們更新螢幕恆亮模式
+    /**
+     * 讓 UI 可以通知更新螢幕恆亮模式
+     */
     fun setWakeLockMode(newMode: WakeLockMode) {
         _wakeLockMode.value = newMode // 更新 UI 狀態
         appPreferences.saveWakeLockMode(newMode) // 保存到永久儲存

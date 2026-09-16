@@ -29,11 +29,6 @@ data class NoteRecord(
         return sdf.format(Date(updatedAt))
     }
 
-    fun getFormattedDeletedDate(): String {
-        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
-        return sdf.format(Date(if (deletedAt > 0) deletedAt else updatedAt))
-    }
-
     /**
      * 從標題與內容自動提取 #標籤 並合併顯式標籤
      */

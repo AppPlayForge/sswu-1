@@ -4,9 +4,9 @@ import android.app.Activity
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -39,13 +39,11 @@ import com.example.myTools.carspeed.CarSpeedScreen
 import com.example.myTools.luopan.LuopanScreen
 import com.example.myTools.note.NoteScreen
 import com.example.myTools.period.PeriodTrackerScreen
+import com.example.myTools.tools.AppSettingsDialog
 import com.example.myTools.tools.ToolsScreen
 import com.example.myTools.ui.BlurryContainer
 
-private fun getRouteIndex(route: String?, screens: List<BottomBarScreen>): Int {
-    val index = screens.indexOfFirst { it.route == route }
-    return if (index >= 0) index else 0
-}
+
 
 @Composable
 fun MainScreen(initialPage: Int = 0) {
@@ -64,10 +62,12 @@ fun MainScreen(initialPage: Int = 0) {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // 將 initialPage 轉換為路由 (預設開啟首頁為「黃曆」)
-    val initialRoute = remember(initialPage) {
+    // 固定的首頁路由為黃曆頁面
+    val rootRoute = BottomBarScreen.Almanac.route
+
+    // 目標啟動頁 (除非從外部 Intent 傳入特定的 initialPage，否則預設開啟黃曆首頁)
+    val targetRoute = remember(initialPage) {
         when (initialPage) {
-            0 -> BottomBarScreen.Almanac.route
             1 -> BottomBarScreen.Note.route
             2 -> BottomBarScreen.Birthday.route
             3 -> BottomBarScreen.Tools.route
@@ -75,11 +75,11 @@ fun MainScreen(initialPage: Int = 0) {
         }
     }
 
-    // 當 initialPage 改變時（例如從外部啟動），進行導航
-    LaunchedEffect(initialPage) {
-        if (currentRoute != initialRoute) {
-            navController.navigate(initialRoute) {
-                popUpTo(navController.graph.startDestinationId) { saveState = true }
+    // 當從外部 Intent 啟動非黃曆頁面時進行二級跳轉
+    LaunchedEffect(targetRoute) {
+        if (targetRoute != rootRoute && currentRoute != targetRoute) {
+            navController.navigate(targetRoute) {
+                popUpTo(rootRoute) { saveState = true }
                 launchSingleTop = true
                 restoreState = true
             }
@@ -105,13 +105,29 @@ fun MainScreen(initialPage: Int = 0) {
     }
     val isAppBlurred by MainActivity.isAppBlurred.collectAsState()
 
-    val isAtStartDestination = currentRoute == initialRoute || currentRoute == null
-    BackHandler(enabled = !isAtStartDestination) {
-        navController.navigate(initialRoute) {
-            popUpTo(navController.graph.startDestinationId) { saveState = true }
-            launchSingleTop = true
-            restoreState = true
+    // 檢查是否需要自動重新開啟權限對話框 (例如從系統設定返回)
+    var showAutoReopenPermissionDialog by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (appPreferences.shouldAutoReopenPermissionDialog()) {
+            appPreferences.setAutoReopenPermissionDialog(false)
+            showAutoReopenPermissionDialog = true
         }
+    }
+
+    val navigateToAlmanac = {
+        if (currentRoute != rootRoute) {
+            navController.navigate(rootRoute) {
+                popUpTo(rootRoute) {
+                    inclusive = false
+                }
+                launchSingleTop = true
+            }
+        }
+    }
+
+    val isAtAlmanac = currentRoute == rootRoute || currentRoute == null
+    BackHandler(enabled = !isAtAlmanac) {
+        navigateToAlmanac()
     }
 
     Scaffold(
@@ -133,42 +149,18 @@ fun MainScreen(initialPage: Int = 0) {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = initialRoute,
+            startDestination = rootRoute,
             enterTransition = {
-                val initialIndex = getRouteIndex(initialState.destination.route, currentBottomBarScreens)
-                val targetIndex = getRouteIndex(targetState.destination.route, currentBottomBarScreens)
-                if (targetIndex >= initialIndex) {
-                    slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
-                }
+                fadeIn(animationSpec = tween(180))
             },
             exitTransition = {
-                val initialIndex = getRouteIndex(initialState.destination.route, currentBottomBarScreens)
-                val targetIndex = getRouteIndex(targetState.destination.route, currentBottomBarScreens)
-                if (targetIndex >= initialIndex) {
-                    slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
-                }
+                fadeOut(animationSpec = tween(180))
             },
             popEnterTransition = {
-                val initialIndex = getRouteIndex(initialState.destination.route, currentBottomBarScreens)
-                val targetIndex = getRouteIndex(targetState.destination.route, currentBottomBarScreens)
-                if (targetIndex <= initialIndex) {
-                    slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
-                } else {
-                    slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
-                }
+                fadeIn(animationSpec = tween(180))
             },
             popExitTransition = {
-                val initialIndex = getRouteIndex(initialState.destination.route, currentBottomBarScreens)
-                val targetIndex = getRouteIndex(targetState.destination.route, currentBottomBarScreens)
-                if (targetIndex <= initialIndex) {
-                    slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }, animationSpec = tween(300))
-                } else {
-                    slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }, animationSpec = tween(300))
-                }
+                fadeOut(animationSpec = tween(180))
             },
             modifier = Modifier
                 .fillMaxSize()
@@ -178,55 +170,25 @@ fun MainScreen(initialPage: Int = 0) {
                 AlmanacScreen(modifier = Modifier.fillMaxSize())
             }
             composable(BottomBarScreen.Note.route) {
-                NoteScreen()
+                NoteScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.Birthday.route) {
-                LunarBirthdayScreen()
+                LunarBirthdayScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.BaZi.route) {
-                BaZiScreen(onBack = {
-                    navController.navigate(initialRoute) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                })
+                BaZiScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.Luopan.route) {
-                LuopanScreen(onBack = {
-                    navController.navigate(initialRoute) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                })
+                LuopanScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.Caliper.route) {
-                CaliperScreen(onBack = {
-                    navController.navigate(initialRoute) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                })
+                CaliperScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.CarSpeed.route) {
-                CarSpeedScreen(onBack = {
-                    navController.navigate(initialRoute) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                })
+                CarSpeedScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.PeriodTracker.route) {
-                PeriodTrackerScreen(onBack = {
-                    navController.navigate(initialRoute) {
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                })
+                PeriodTrackerScreen(onBack = navigateToAlmanac)
             }
             composable(BottomBarScreen.Tools.route) {
                 ToolsScreen(
@@ -242,5 +204,9 @@ fun MainScreen(initialPage: Int = 0) {
                 )
             }
         }
+    }
+
+    if (showAutoReopenPermissionDialog) {
+        AppSettingsDialog(onDismiss = { showAutoReopenPermissionDialog = false })
     }
 }

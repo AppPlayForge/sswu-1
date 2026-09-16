@@ -22,7 +22,7 @@ object BirthdayManager {
         return try {
             val rawList: List<BirthdayRecord>? = gson.fromJson(json, type)
             rawList ?: emptyList()
-        } catch (e: Exception) { emptyList() }
+        } catch (_: Exception) { emptyList() }
     }
 
     fun saveList(context: Context, list: List<BirthdayRecord>) {
