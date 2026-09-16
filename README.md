@@ -1,11 +1,22 @@
 ## 黃曆，吉日查詢，記事本，農曆生日提醒，八字，AI算命，AI起名字，風水羅盤，尺規，車速儀，月經記錄。
 
+Traditional almanac, auspicious day lookup, notepad, lunar birthday reminders, BaZi (Four Pillars of Destiny), 
+AI fortune-telling, AI name generation, Feng Shui compass, ruler and protractor, speedometer, menstrual tracker.
+
+
 項目 minSdk 設置為 31 (Android 12)
 支持安卓12系統以上；
 點擊本網頁右邊的Releases打開下載頁面，請選擇最新版本(刪除舊版后安裝)；
 
 因未發佈到應用市場，部分手機會有風險提示。
 僅限於內部測試，禁止商業用途。
+
+The project's minSdk is set to 31 (Android 12).
+Supports Android 12 and later versions.
+Click "Releases" on the right side of this page to open the download section and select the latest version (please uninstall the old version before installing the new one).
+
+As this app has not been published on official app stores, some phones may display a security warning.
+For internal testing only; commercial use is prohibited.
 
 ---
 ### 版權所有 (Copyright)
@@ -23,6 +34,7 @@ Copyright © 2026 AppPlayForge. All rights reserved.
 - **GitHub Issues**: 提交一個 Issue 說明你的意圖
 
 未經許可的商業轉售、打包銷售或封裝後作為商業軟件發佈將被視為侵權行為。
+Unauthorized commercial resale, bundling, or redistribution as commercial software after repackaging will be considered an act of infringement.
 
 <img width="30%" alt="黃曆" src="https://github.com/user-attachments/assets/1333ae92-c2c7-4a41-ba81-8f97155e36c8" />
 <img width="30%" alt="Screenshot_20260829_133851" src="https://github.com/user-attachments/assets/4fa7daa7-984c-4e16-bce5-9f60c38dfdeb" />
